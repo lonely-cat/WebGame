@@ -1,4 +1,4 @@
-import { defineComponent, h } from "vue";
+import { defineAsyncComponent, defineComponent, h } from "vue";
 import type { RouteRecordRaw } from "vue-router";
 import type { GameMeta } from "./types";
 
@@ -21,11 +21,14 @@ export class GameRegistry {
 export function createGameRoute(gameMeta: GameMeta): RouteRecordRaw {
   return {
     path: gameMeta.routePath,
-    component: defineComponent({
-      name: `${gameMeta.gameCode}-route`,
-      setup() {
-        return () => h("div", `${gameMeta.gameName} page`);
-      }
+    component: defineAsyncComponent(async () => {
+      const loaded = await Promise.resolve(gameMeta.loader());
+      return (loaded as { default?: object } | null)?.default ?? loaded ?? defineComponent({
+        name: `${gameMeta.gameCode}-placeholder`,
+        setup() {
+          return () => h("div", `${gameMeta.gameName} page`);
+        }
+      });
     })
   };
 }

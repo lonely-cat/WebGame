@@ -66,6 +66,22 @@ public class GameMessageDispatcher {
     }
 
     public void handleGameAction(Long userId, GameWsMessage message) {
+        if (message.type() == WsMessageType.PLAYER_ACTION && message.roomCode() != null) {
+            try {
+                GameRoomEntity room = roomService.getRoomDetail(message.roomCode());
+                sessionManager.broadcastToRoom(room.getId(), serialize(new GameWsMessage(
+                        WsMessageType.PLAYER_ACTION,
+                        message.gameCode(),
+                        message.roomCode(),
+                        message.matchCode(),
+                        message.payload(),
+                        java.time.Instant.now()
+                )));
+            } catch (Exception exception) {
+                sendError(userId, exception.getMessage());
+            }
+            return;
+        }
         if (message.type() == WsMessageType.MATCH_START && message.roomCode() != null) {
             try {
                 GameRoomEntity room = roomService.getRoomDetail(message.roomCode());

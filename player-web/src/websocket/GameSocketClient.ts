@@ -1,11 +1,15 @@
 export class GameSocketClient {
   private socket: WebSocket | null = null;
   private messageHandlers: Array<(message: MessageEvent) => void> = [];
+  private openHandlers: Array<() => void> = [];
+  private closeHandlers: Array<() => void> = [];
 
   connect(token: string, userId: number) {
     const protocol = location.protocol === "https:" ? "wss" : "ws";
     this.socket = new WebSocket(`${protocol}://${location.host}/ws/game?token=${token}&userId=${userId}`);
     this.socket.onmessage = (event) => this.messageHandlers.forEach((handler) => handler(event));
+    this.socket.onopen = () => this.openHandlers.forEach((handler) => handler());
+    this.socket.onclose = () => this.closeHandlers.forEach((handler) => handler());
   }
 
   disconnect() {
@@ -22,15 +26,11 @@ export class GameSocketClient {
   }
 
   onOpen(handler: () => void) {
-    if (this.socket) {
-      this.socket.onopen = handler;
-    }
+    this.openHandlers.push(handler);
   }
 
   onClose(handler: () => void) {
-    if (this.socket) {
-      this.socket.onclose = handler;
-    }
+    this.closeHandlers.push(handler);
   }
 
   heartbeat() {

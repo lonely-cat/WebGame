@@ -6,7 +6,7 @@ gameRegistry.register({
   gameCode: "gomoku",
   gameName: "Gomoku",
   mode: "vue",
-  loader: () => Promise.resolve(null),
+  loader: () => import("../games/gomoku/GomokuView.vue"),
   multiplayer: true,
   routePath: "/games/gomoku"
 });

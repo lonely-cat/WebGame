@@ -10,11 +10,15 @@ export const useAuthStore = defineStore("auth", {
     async login(username: string, password: string) {
       const result = await authApi.login({ username, password });
       this.token = String((result as any).data?.accessToken ?? "");
+      if (this.token) {
+        localStorage.setItem("webgame_token", this.token);
+      }
       return result;
     },
     logout() {
       this.token = "";
       this.userInfo = null;
+      localStorage.removeItem("webgame_token");
     },
     async fetchProfile() {
       const result = await authApi.getProfile();

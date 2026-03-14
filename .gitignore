@@ -1,6 +1,9 @@
 backend/target/
+backend/run/
 node_modules/
 dist/
+player-web/output/
+player-web/run/
 .idea/
 .vscode/
 *.log

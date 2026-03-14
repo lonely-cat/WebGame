@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "test:gomoku:multiplayer": "node ./scripts/gomoku_multiplayer_check.mjs"
   },
   "dependencies": {
     "pinia": "^2.1.7",
@@ -14,6 +15,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",
+    "playwright": "^1.58.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.7"
   }

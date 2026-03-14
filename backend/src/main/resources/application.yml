@@ -19,4 +19,4 @@ webgame:
     issuer: webgame
     access-token-expire-seconds: 7200
     refresh-token-expire-seconds: 604800
-    secret: change-me-in-local-env
+    secret: webgame-jwt-secret-2026-change-this-to-a-secure-prod-value
