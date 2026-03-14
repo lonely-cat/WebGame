@@ -23,9 +23,12 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Added a reusable `useMultiplayerRoomSession` composable for platform-level login, room creation, socket connection, ready flow, match-start flow, and text-state output.
 - Used that shared room session to bring Chinese Chess onto the same multiplayer shell, with working `/room` and `/match` routes and a validated dual-client room-to-match transition.
 - Fixed a real shared-state bug while doing this: room shells and child routes now reuse one cached session per game code instead of accidentally creating separate websocket/session state.
+- Extended the shared room session with game-specific websocket hooks and generic client-message sending so platform state can be reused without blocking game-specific action handling.
+- Moved Gomoku onto that shared room session path for login/build room/join/start plumbing while keeping move application, board rendering, and server-state sync inside the Gomoku layer.
+- Re-ran Gomoku multiplayer sync, Gomoku illegal-move rejection, and the Chinese Chess room-to-match check after the refactor; all three still pass.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
-- Move Gomoku onto the generic room-session primitives where practical so only board logic stays game-specific.
+- Continue shrinking the remaining Gomoku-specific session code so only pure board/rule behavior stays in the game folder.
 - Plug Draw and Guess into the shared multiplayer shell after the generic room flow is stable.
 - Add a cleaner persistent dev-start workflow for backend and frontend.

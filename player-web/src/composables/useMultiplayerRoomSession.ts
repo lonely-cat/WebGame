@@ -1,9 +1,10 @@
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, type Ref } from "vue";
 import { authApi } from "../api/authApi";
 import { assetApi } from "../api/assetApi";
 import { roomApi } from "../api/roomApi";
 import { GameSocketClient } from "../websocket/GameSocketClient";
 import {
+  type ClientWsMessage,
   encodeClientMessage,
   isRoomStateMessage,
   parsePayload,
@@ -12,11 +13,24 @@ import {
   type ErrorPayload,
   type MatchEndPayload,
   type MatchStartPayload,
+  type ServerWsEnvelope,
   type RoomPlayerState
 } from "../websocket/gameProtocol";
 
 type PhaseKey = "auth" | "room" | "match";
 type RoomSessionReturn = ReturnType<typeof createMultiplayerRoomSession>;
+type SessionMessageHelpers = {
+  currentUser: Ref<{ userId: number; username: string } | null>;
+  activeRoomCode: Ref<string>;
+  roomPlayers: Ref<RoomPlayerState[]>;
+  matchCode: Ref<string>;
+  roleLabel: Ref<string>;
+  winner: Ref<string>;
+  currentTurnLabel: Ref<string>;
+  pushFeed: (text: string) => void;
+  syncWindowHelpers: () => void;
+};
+type CustomMessageHandler = (message: ServerWsEnvelope, helpers: SessionMessageHelpers) => boolean | void;
 
 const sessionCache = new Map<string, RoomSessionReturn>();
 
@@ -24,6 +38,7 @@ export function useMultiplayerRoomSession(gameCode: string, options?: {
   defaultUsername?: string;
   defaultPassword?: string;
   testUserPrefix?: string;
+  customMessageHandler?: CustomMessageHandler;
 }) {
   const cached = sessionCache.get(gameCode);
   if (cached) {
@@ -39,6 +54,7 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
   defaultUsername?: string;
   defaultPassword?: string;
   testUserPrefix?: string;
+  customMessageHandler?: CustomMessageHandler;
 }) {
   const loginForm = reactive({
     username: options?.defaultUsername ?? "admin",
@@ -122,6 +138,7 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
     joinRoomViaSocket,
     sendReady,
     startMatch,
+    sendClientMessage,
     playerNameBySeat,
     seatStatus,
     seatTone,
@@ -311,19 +328,37 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
   }
 
   function startMatch() {
-    socketClient.send(encodeClientMessage({
+    sendClientMessage({
       type: wsMessageTypes.matchStart,
       gameCode,
       roomCode: activeRoomCode.value,
       payload: { start: true },
       timestamp: new Date().toISOString()
-    }));
+    });
+  }
+
+  function sendClientMessage(message: ClientWsMessage) {
+    socketClient.send(encodeClientMessage(message));
   }
 
   function handleSocketMessage(event: MessageEvent) {
     const parsed = parseServerEnvelope(event.data);
     if (!parsed) {
       pushFeed(String(event.data));
+      return;
+    }
+    const wasHandled = options?.customMessageHandler?.(parsed, {
+      currentUser,
+      activeRoomCode,
+      roomPlayers,
+      matchCode,
+      roleLabel,
+      winner,
+      currentTurnLabel,
+      pushFeed,
+      syncWindowHelpers
+    });
+    if (wasHandled) {
       return;
     }
     if (parsed.type === wsMessageTypes.matchStart) {
