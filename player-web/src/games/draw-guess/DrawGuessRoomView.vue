@@ -115,7 +115,7 @@
 import { watch } from "vue";
 import { useRouter } from "vue-router";
 import MultiplayerTwoColumn from "../../components/multiplayer/MultiplayerTwoColumn.vue";
-import { useMultiplayerRoomSession } from "../../composables/useMultiplayerRoomSession";
+import { useDrawGuessSession } from "./useDrawGuessSession";
 
 const router = useRouter();
 const {
@@ -143,9 +143,7 @@ const {
   playerNameBySeat,
   seatStatus,
   seatTone
-} = useMultiplayerRoomSession("draw-guess", {
-  testUserPrefix: "drawguess"
-});
+} = useDrawGuessSession();
 
 watch(inMatch, (value) => {
   if (value) {

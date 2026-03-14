@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { RouterView } from "vue-router";
 import MultiplayerShell from "../../components/multiplayer/MultiplayerShell.vue";
-import { useMultiplayerRoomSession } from "../../composables/useMultiplayerRoomSession";
+import { useDrawGuessSession } from "./useDrawGuessSession";
 
 const {
   phaseTitle,
@@ -28,7 +28,5 @@ const {
   matchCode,
   roleLabel,
   socketConnected
-} = useMultiplayerRoomSession("draw-guess", {
-  testUserPrefix: "drawguess"
-});
+} = useDrawGuessSession();
 </script>

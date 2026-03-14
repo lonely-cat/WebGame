@@ -28,9 +28,12 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Re-ran Gomoku multiplayer sync, Gomoku illegal-move rejection, and the Chinese Chess room-to-match check after the refactor; all three still pass.
 - Added Draw and Guess shell, room, and match routes on top of the shared multiplayer room session so a third game now uses the same platform room flow.
 - Added a dual-client Draw and Guess room-check script and verified that both players can join, ready up, start, and transition into the match route together.
+- Upgraded the backend websocket/match flow so state sync can be built per viewer and player actions keep their real action type instead of being forced into `"move"`.
+- Implemented the first real Draw and Guess round loop: server-assigned secret words, drawer/guesser roles, stroke sync, guess submission, prompt masking for non-drawers, and winner resolution on a correct guess.
+- Added a real Draw and Guess round check that proved a full cycle: drawer receives a prompt, draws, guesser submits the right word, and both clients converge on a finished state with the same winner.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
 - Continue shrinking the remaining Gomoku-specific session code so only pure board/rule behavior stays in the game folder.
-- Turn Draw and Guess from a shell into a real party game: prompt assignment, drawer rotation, stroke sync, guess input, and timed round scoring.
+- Expand Draw and Guess beyond the first round prototype: drawer rotation, timed rounds, scoring across multiple rounds, and better guess history UI.
 - Add a cleaner persistent dev-start workflow for backend and frontend.

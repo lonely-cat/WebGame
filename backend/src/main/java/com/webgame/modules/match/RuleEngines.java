@@ -212,9 +212,104 @@ public final class RuleEngines {
 
     @Component
     public static class DrawGuessRuleEngine extends AbstractRuleEngine {
+        private static final List<String> WORDS = List.of("cat", "house", "tree", "rocket", "apple");
+
         @Override
         public String getGameCode() {
             return "draw-guess";
+        }
+
+        @Override
+        public GameState initState(MatchInitContext context) {
+            Map<String, Object> data = new HashMap<>();
+            String word = WORDS.get(Math.floorMod(context.roomId().intValue(), WORDS.size()));
+            data.put("roundNo", 1);
+            data.put("phase", "drawing");
+            data.put("secretWord", word);
+            data.put("promptMask", "_".repeat(word.length()));
+            data.put("strokes", new ArrayList<Map<String, Object>>());
+            data.put("guesses", new ArrayList<Map<String, Object>>());
+            data.put("winnerUserId", null);
+            data.put("currentTurn", "drawing");
+            data.put("drawerUserId", null);
+            return new GameState(getGameCode(), data);
+        }
+
+        @Override
+        public ActionValidateResult validateAction(PlayerActionCommand action, GameState state) {
+            String role = String.valueOf(action.payload().getOrDefault("role", ""));
+            if ("draw_stroke".equals(action.actionType())) {
+                if (!"drawer".equals(role)) {
+                    return new ActionValidateResult(false, "only the drawer can draw");
+                }
+                return new ActionValidateResult(true, "accepted");
+            }
+            if ("submit_guess".equals(action.actionType())) {
+                if ("drawer".equals(role)) {
+                    return new ActionValidateResult(false, "drawer cannot submit guesses");
+                }
+                String guess = String.valueOf(action.payload().getOrDefault("guess", "")).trim();
+                if (guess.isEmpty()) {
+                    return new ActionValidateResult(false, "guess cannot be empty");
+                }
+                return new ActionValidateResult(true, "accepted");
+            }
+            return new ActionValidateResult(false, "unsupported action type");
+        }
+
+        @Override
+        public GameState applyAction(PlayerActionCommand action, GameState state) {
+            if ("draw_stroke".equals(action.actionType())) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> strokes = (List<Map<String, Object>>) state.data().get("strokes");
+                strokes.add(new HashMap<>(Map.of(
+                        "userId", action.userId(),
+                        "stroke", action.payload().get("stroke")
+                )));
+                return state;
+            }
+            if ("submit_guess".equals(action.actionType())) {
+                String guess = String.valueOf(action.payload().get("guess")).trim();
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> guesses = (List<Map<String, Object>>) state.data().get("guesses");
+                guesses.add(new HashMap<>(Map.of(
+                        "userId", action.userId(),
+                        "guess", guess
+                )));
+                String secretWord = String.valueOf(state.data().get("secretWord"));
+                if (secretWord.equalsIgnoreCase(guess)) {
+                    state.data().put("phase", "finished");
+                    state.data().put("winnerUserId", action.userId());
+                    state.data().put("currentTurn", "finished");
+                }
+            }
+            return state;
+        }
+
+        @Override
+        public boolean isGameOver(GameState state) {
+            return state.data().get("winnerUserId") != null;
+        }
+
+        @Override
+        public MatchResult buildMatchResult(GameState state) {
+            Long winnerUserId = state.data().get("winnerUserId") instanceof Number number ? number.longValue() : null;
+            return new MatchResult(getGameCode(), "", winnerUserId, Map.of(
+                    "winnerUserId", winnerUserId,
+                    "secretWord", state.data().get("secretWord"),
+                    "guesses", state.data().get("guesses")
+            ));
+        }
+
+        @Override
+        public GameStateView buildStateView(GameState state, Long viewerUserId) {
+            Map<String, Object> visible = new HashMap<>(state.data());
+            Long drawerUserId = state.data().get("drawerUserId") instanceof Number number ? number.longValue() : null;
+            boolean isDrawer = viewerUserId != null && viewerUserId.equals(drawerUserId);
+            if (!isDrawer) {
+                visible.remove("secretWord");
+            }
+            return new GameStateView(getGameCode(), visible);
         }
     }
 }

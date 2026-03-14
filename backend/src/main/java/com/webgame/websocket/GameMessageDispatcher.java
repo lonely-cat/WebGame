@@ -5,7 +5,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.webgame.modules.match.MatchServiceImpl;
 import com.webgame.modules.room.RoomModels.GameRoomEntity;
+import com.webgame.modules.room.RoomModels.RoomPlayerEntity;
 import com.webgame.modules.room.RoomServiceImpl;
+import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
@@ -86,17 +88,7 @@ public class GameMessageDispatcher {
                         serialize(result.action()),
                         java.time.Instant.now()
                 )));
-                sessionManager.broadcastToRoom(room.getId(), serialize(new GameWsMessage(
-                        WsMessageType.GAME_STATE_SYNC,
-                        message.gameCode(),
-                        message.roomCode(),
-                        result.matchCode(),
-                        serialize(Map.of(
-                                "state", result.state(),
-                                "playerStones", result.playerStones()
-                        )),
-                        java.time.Instant.now()
-                )));
+                broadcastGameState(room, result.matchCode(), result.playerStones());
                 if (result.result() != null) {
                     sessionManager.broadcastToRoom(room.getId(), serialize(new GameWsMessage(
                             WsMessageType.MATCH_END,
@@ -130,17 +122,7 @@ public class GameMessageDispatcher {
                         )),
                         java.time.Instant.now()
                 )));
-                sessionManager.broadcastToRoom(room.getId(), serialize(new GameWsMessage(
-                        WsMessageType.GAME_STATE_SYNC,
-                        room.gameCode,
-                        room.roomCode,
-                        result.matchCode(),
-                        serialize(Map.of(
-                                "state", result.state(),
-                                "playerStones", result.playerStones()
-                        )),
-                        java.time.Instant.now()
-                )));
+                broadcastGameState(room, result.matchCode(), result.playerStones());
             } catch (Exception exception) {
                 sendError(userId, exception.getMessage());
             }
@@ -170,6 +152,26 @@ public class GameMessageDispatcher {
                 room.maxPlayers,
                 roomService.getRoomPlayers(room.getId())
         )));
+    }
+
+    private void broadcastGameState(GameRoomEntity room, String matchCode, Map<Long, String> playerStones) {
+        List<RoomPlayerEntity> players = roomService.getRoomPlayers(room.getId());
+        for (RoomPlayerEntity player : players) {
+            try {
+                sessionManager.sendToUser(player.userId, serialize(new GameWsMessage(
+                        WsMessageType.GAME_STATE_SYNC,
+                        room.gameCode,
+                        room.roomCode,
+                        matchCode,
+                        serialize(Map.of(
+                                "state", matchService.buildStateForUser(room, player.userId),
+                                "playerStones", playerStones
+                        )),
+                        java.time.Instant.now()
+                )));
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     private void sendError(Long userId, String message) {

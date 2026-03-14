@@ -50,12 +50,12 @@ export interface MatchStartPayload {
   status?: string;
   matchId?: number;
   matchCode?: string;
-  playerStones?: Record<string, "black" | "white">;
+  playerStones?: Record<string, string>;
 }
 
 export interface GameStateSyncPayload<TState = Record<string, unknown>> {
   state: TState;
-  playerStones?: Record<string, "black" | "white">;
+  playerStones?: Record<string, string>;
 }
 
 export interface MatchEndPayload {
@@ -71,6 +71,25 @@ export interface MoveActionPayload {
   row: number;
   col: number;
   stone: "black" | "white";
+}
+
+export interface DrawGuessStrokePoint {
+  x: number;
+  y: number;
+}
+
+export interface DrawGuessStrokePayload {
+  type: "draw_stroke";
+  stroke: {
+    color: string;
+    width: number;
+    points: DrawGuessStrokePoint[];
+  };
+}
+
+export interface DrawGuessGuessPayload {
+  type: "submit_guess";
+  guess: string;
 }
 
 export function encodeClientMessage(message: ClientWsMessage): string {

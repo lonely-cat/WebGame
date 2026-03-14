@@ -77,7 +77,8 @@ public class MatchServiceImpl implements MatchService {
         long matchId = createMatchFromRoom(room.getId());
         String matchCode = "match-" + matchId;
         GameState state = ruleEngine.initState(new MatchInitContext(room.getId(), room.gameCode));
-        Map<Long, String> playerStones = assignStones(players);
+        Map<Long, String> playerStones = assignRoles(room.gameCode, players);
+        seedStateForRoles(room.gameCode, state, playerStones);
         ActiveMatchSession session = new ActiveMatchSession(matchId, matchCode, room.getId(), room.roomCode, room.gameCode, state, playerStones);
         sessionsByRoomId.put(room.getId(), session);
         startMatch(matchId);
@@ -97,8 +98,11 @@ public class MatchServiceImpl implements MatchService {
         }
 
         Map<String, Object> normalizedPayload = new HashMap<>(payload);
+        normalizedPayload.put("userId", userId);
         normalizedPayload.put("stone", stone);
-        PlayerActionCommand command = new PlayerActionCommand(room.gameCode, session.matchCode(), userId, "move", normalizedPayload);
+        normalizedPayload.put("role", stone);
+        String actionType = String.valueOf(normalizedPayload.getOrDefault("type", "move"));
+        PlayerActionCommand command = new PlayerActionCommand(room.gameCode, session.matchCode(), userId, actionType, normalizedPayload);
         ActionValidateResult validation = ruleEngine.validateAction(command, session.state());
         if (!validation.valid()) {
             throw new BusinessException("MATCH_ACTION_INVALID", validation.message());
@@ -116,16 +120,20 @@ public class MatchServiceImpl implements MatchService {
 
         return new MatchActionResult(
                 session.matchCode(),
-                Map.of(
-                        "type", "move",
-                        "row", normalizedPayload.get("row"),
-                        "col", normalizedPayload.get("col"),
-                        "stone", stone
-                ),
+                normalizedPayload,
                 view.visibleState(),
                 session.playerStones(),
                 result == null ? null : result.summary()
         );
+    }
+
+    public Map<String, Object> buildStateForUser(GameRoomEntity room, Long userId) {
+        ActiveMatchSession session = sessionsByRoomId.get(room.getId());
+        if (session == null) {
+            return Map.of();
+        }
+        GameRuleEngine ruleEngine = getRuleEngine(room.gameCode);
+        return ruleEngine.buildStateView(session.state(), userId).visibleState();
     }
 
     private Map<String, Object> buildSnapshot(ActiveMatchSession session, GameStateView view) {
@@ -138,12 +146,35 @@ public class MatchServiceImpl implements MatchService {
         );
     }
 
-    private Map<Long, String> assignStones(List<RoomPlayerEntity> players) {
+    private Map<Long, String> assignRoles(String gameCode, List<RoomPlayerEntity> players) {
         Map<Long, String> playerStones = new HashMap<>();
         for (RoomPlayerEntity player : players) {
-            playerStones.put(player.userId, player.seatNo == 1 ? "black" : "white");
+            if ("draw-guess".equals(gameCode)) {
+                playerStones.put(player.userId, player.seatNo == 1 ? "drawer" : "guesser");
+            } else if ("chinese-chess".equals(gameCode)) {
+                playerStones.put(player.userId, player.seatNo == 1 ? "red" : "black");
+            } else {
+                playerStones.put(player.userId, player.seatNo == 1 ? "black" : "white");
+            }
         }
         return playerStones;
+    }
+
+    private void seedStateForRoles(String gameCode, GameState state, Map<Long, String> playerRoles) {
+        if ("draw-guess".equals(gameCode)) {
+            Long drawerUserId = playerRoles.entrySet().stream()
+                    .filter(entry -> "drawer".equals(entry.getValue()))
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElse(null);
+            state.data().put("drawerUserId", drawerUserId);
+            state.data().put("currentTurn", "drawing");
+            state.data().put("playerRoles", new HashMap<>(playerRoles));
+        }
+        if ("chinese-chess".equals(gameCode)) {
+            state.data().put("currentTurn", "red");
+            state.data().put("playerRoles", new HashMap<>(playerRoles));
+        }
     }
 
     private GameRuleEngine getRuleEngine(String gameCode) {
