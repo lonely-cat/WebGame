@@ -1,5 +1,6 @@
 package com.webgame.websocket;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
@@ -14,10 +15,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private final SessionManager sessionManager;
     private final GameMessageDispatcher messageDispatcher;
+    private final ObjectMapper objectMapper;
 
-    public GameWebSocketHandler(SessionManager sessionManager, GameMessageDispatcher messageDispatcher) {
+    public GameWebSocketHandler(SessionManager sessionManager, GameMessageDispatcher messageDispatcher, ObjectMapper objectMapper) {
         this.sessionManager = sessionManager;
         this.messageDispatcher = messageDispatcher;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -29,16 +32,13 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
         Long userId = extractUserId(session.getUri());
-        GameWsMessage gameWsMessage = new GameWsMessage(
-                WsMessageType.HEARTBEAT,
-                null,
-                null,
-                null,
-                message.getPayload(),
-                Instant.now()
-        );
+        GameWsMessage gameWsMessage;
+        try {
+            gameWsMessage = objectMapper.readValue(message.getPayload(), GameWsMessage.class);
+        } catch (Exception exception) {
+            gameWsMessage = new GameWsMessage(WsMessageType.HEARTBEAT, null, null, null, message.getPayload(), Instant.now());
+        }
         messageDispatcher.dispatch(userId, gameWsMessage);
-        session.sendMessage(new TextMessage("{\"ok\":true}"));
     }
 
     @Override

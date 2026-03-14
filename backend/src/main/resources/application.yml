@@ -1,6 +1,15 @@
 spring:
   application:
     name: webgame-backend
+  datasource:
+    url: jdbc:mysql://cat.cat:3306/webgame?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: webgame
+    password: 0NXmsAlFEAOBHNqB7NCTiaAY
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: catg.cat
+      port: 6399
 
 server:
   port: 8080
