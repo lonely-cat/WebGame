@@ -28,6 +28,9 @@
             <h2>Round totals</h2>
           </div>
         </div>
+        <p v-if="scoreLeader" class="leader-note">
+          Leader: User #{{ scoreLeader.userId }} with {{ scoreLeader.score }} points
+        </p>
         <ul class="score-list">
           <li v-for="entry in sortedScores" :key="entry.userId">
             <span>User #{{ entry.userId }}</span>
@@ -57,7 +60,7 @@
             <h2>Live sketch round</h2>
           </div>
           <div class="actions">
-            <span class="badge">{{ inMatch ? roundPhase : "waiting" }}</span>
+            <span class="badge">{{ inMatch ? roundStatusLabel : "waiting" }}</span>
             <button v-if="canAdvanceRound" class="ghost next-btn" @click="startNextRound">Next Round</button>
           </div>
         </div>
@@ -90,8 +93,10 @@
             <button :disabled="isDrawer || !inMatch || roundPhase !== 'drawing'" @click="submitGuess">Submit Guess</button>
           </div>
           <ul class="guess-feed">
-            <li v-for="entry in guesses.slice().reverse()" :key="`${entry.userId}-${entry.guess}-${entryIndex(entry)}`">
-              User #{{ entry.userId }} guessed "{{ entry.guess }}"
+            <li v-for="entry in guessHistory" :key="entry.id" :class="entry.outcome">
+              <span>User #{{ entry.userId }}</span>
+              <strong>{{ entry.guess }}</strong>
+              <em>{{ entry.outcome === "correct" ? "Correct" : "Attempt" }}</em>
             </li>
           </ul>
         </div>
@@ -127,8 +132,11 @@ const {
   roundPhase,
   secondsRemaining,
   sortedScores,
+  scoreLeader,
+  guessHistory,
   canAdvanceRound,
   startNextRound,
+  roundStatusLabel,
   roundSummary
 } = useDrawGuessSession();
 
@@ -222,10 +230,6 @@ function finishStroke() {
   drawScene();
 }
 
-function entryIndex(entry: { userId: number; guess: string }) {
-  return guesses.value.indexOf(entry);
-}
-
 onMounted(() => {
   if (!canvasRef.value) return;
   ctxRef.value = canvasRef.value.getContext("2d");
@@ -301,6 +305,14 @@ watch(roundNo, () => {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+}
+
+.leader-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 252, 245, 0.82);
+  color: #6a3e17;
 }
 
 dt {
@@ -422,7 +434,39 @@ button:disabled {
 .guess-feed,
 .feed {
   margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.guess-feed li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 252, 245, 0.9);
+}
+
+.guess-feed li.correct {
+  background: rgba(234, 255, 239, 0.94);
+  border: 1px solid rgba(70, 132, 74, 0.24);
+}
+
+.guess-feed li em {
+  font-style: normal;
+  color: #8a5a28;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+}
+
+.feed {
   padding-left: 18px;
+  list-style: disc;
   line-height: 1.65;
+  display: block;
 }
 </style>

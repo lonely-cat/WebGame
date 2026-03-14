@@ -67,6 +67,28 @@ const canAdvanceRound = computed(() =>
   roundPhase.value === "round_finished" &&
   roundNo.value < maxRounds.value
 );
+const roundStatusLabel = computed(() => {
+  if (roundPhase.value === "drawing") {
+    return "drawing live";
+  }
+  if (roundEndReason.value === "timeout") {
+    return "time expired";
+  }
+  if (roundEndReason.value === "guessed") {
+    return "word solved";
+  }
+  return roundPhase.value;
+});
+const scoreLeader = computed(() => sortedScores.value[0] ?? null);
+const guessHistory = computed(() =>
+  guesses.value
+    .map((entry, index) => ({
+      ...entry,
+      id: `${entry.userId}-${entry.guess}-${index}`,
+      outcome: roundEndReason.value === "guessed" && roomSession.winner.value === `User #${entry.userId}` ? "correct" : "attempt"
+    }))
+    .reverse()
+);
 const roundSummary = computed(() => {
   if (roundPhase.value === "drawing") {
     return isDrawer.value
@@ -99,7 +121,10 @@ function useDrawGuessSession() {
     roundEndReason,
     secondsRemaining,
     sortedScores,
+    scoreLeader,
+    guessHistory,
     canAdvanceRound,
+    roundStatusLabel,
     roundSummary,
     isDrawer,
     displayPrompt,
