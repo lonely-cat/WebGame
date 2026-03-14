@@ -358,6 +358,10 @@ public final class RuleEngines {
                 state.data().put("checkSide", "black");
                 state.data().put("endReason", "checkmate");
                 state.data().put("currentTurn", "black");
+                state.data().put("moves", new ArrayList<>(List.of(
+                        Map.of("piece", "scenario", "note", "Loaded scenario: red checkmates black"),
+                        Map.of("piece", "red-rook", "toRow", 1, "toCol", 4, "note", "Central rook seals the palace file")
+                )));
             } else if ("stalemate_red".equals(scenario)) {
                 board[0][4] = "black-general";
                 board[1][3] = "red-rook";
@@ -368,9 +372,15 @@ public final class RuleEngines {
                 state.data().put("checkSide", null);
                 state.data().put("endReason", "stalemate");
                 state.data().put("currentTurn", "black");
+                state.data().put("moves", new ArrayList<>(List.of(
+                        Map.of("piece", "scenario", "note", "Loaded scenario: red stalemates black"),
+                        Map.of("piece", "red-advisor", "toRow", 1, "toCol", 4, "note", "Advisor blocks the only legal escape")
+                )));
+            } else {
+                state.data().put("moves", new ArrayList<Map<String, Object>>());
             }
             state.data().put("board", board);
-            state.data().put("moves", new ArrayList<Map<String, Object>>());
+            state.data().put("scenarioName", scenario);
             return state;
         }
 

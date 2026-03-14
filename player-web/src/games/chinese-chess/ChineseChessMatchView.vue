@@ -17,6 +17,7 @@
           <p class="status-hero-label">{{ winner ? "Endgame" : statusTone === "check" ? "Check Warning" : "Board State" }}</p>
           <strong>{{ statusLabel }}</strong>
           <span v-if="friendlyEndReason">{{ friendlyEndReason }}</span>
+          <span v-if="scenarioName" class="scenario-chip">Scenario: {{ scenarioName }}</span>
         </div>
         <dl class="stats">
           <div><dt>Role</dt><dd>{{ mySide }}</dd></div>
@@ -115,6 +116,7 @@ const {
   currentTurn,
   winner,
   endReason,
+  scenarioName,
   mySide,
   roomPlayers,
   statusLabel,
@@ -153,13 +155,17 @@ function goToRoom() {
 }
 
 function describeMove(entry: {
-  fromRow: number;
-  fromCol: number;
-  toRow: number;
-  toCol: number;
+  fromRow?: number;
+  fromCol?: number;
+  toRow?: number;
+  toCol?: number;
   piece: string;
   captured?: string;
+  note?: string;
 }) {
+  if (entry.note) {
+    return entry.note;
+  }
   const action = entry.captured ? `captured ${entry.captured}` : "moved";
   return `${entry.piece} ${action} to (${entry.toRow}, ${entry.toCol})`;
 }
@@ -234,6 +240,18 @@ function describeMove(entry: {
 
 .status-hero span {
   line-height: 1.5;
+}
+
+.scenario-chip {
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(106, 73, 31, 0.14);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .scenario-lab {

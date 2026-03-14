@@ -52,6 +52,8 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Added a dev-only Xiangqi scenario lab plus websocket scenario loader so browser tests can jump straight into `checkmate` and `stalemate` states without hand-playing long move sequences.
 - Added browser-level Xiangqi regression scripts for `checkmate` and `stalemate`, then verified both end states sequentially over the real room/socket/match flow with shared test accounts.
 - Fixed a subtle frontend bug where generic room-session `MATCH_END` handling overwrote the Xiangqi-specific `render_game_to_text`, hiding `endReason` from browser automation right after a game ended.
+- Enriched the Xiangqi dev scenarios with readable move-feed notes plus a `scenarioName` field, so browser automation and humans can tell which endgame layout is active without inferring it from the board alone.
+- Re-ran both Xiangqi browser endgame scripts sequentially against the refreshed backend and verified that `scenarioName`, `latestMove.note`, and the end-state UI all stay in sync on both clients.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
@@ -66,4 +68,5 @@ TODO:
 - Continue deepening Xiangqi rules: render real end reasons/check banners more prominently in the UI, add forced mate/stalemate regression scenarios, and keep expanding capture/regression coverage.
 - Continue deepening Xiangqi rules: add browser-level forced mate/stalemate scenarios on top of the new unit tests so the full room-to-match websocket flow is covered for real endgames.
 - Continue deepening Xiangqi rules: replace the current dev-only scenario injection with naturally reachable endgame paths where practical, and add richer move history for injected scenarios so the feed can explain how the end state was reached.
+- Continue deepening Xiangqi rules: replace the current dev-only scenario injection with naturally reachable endgame paths where practical, now that the injected scenarios already expose explanatory feed notes and stable scenario ids for regression reuse.
 - Add a cleaner persistent dev-start workflow for backend and frontend.

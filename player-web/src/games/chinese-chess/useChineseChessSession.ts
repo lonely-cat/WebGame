@@ -21,12 +21,13 @@ type PieceCode =
   | "pawn";
 type Piece = { side: Side; kind: PieceCode } | null;
 type MoveRecord = {
-  fromRow: number;
-  fromCol: number;
-  toRow: number;
-  toCol: number;
+  fromRow?: number;
+  fromCol?: number;
+  toRow?: number;
+  toCol?: number;
   piece: string;
   captured?: string;
+  note?: string;
 };
 
 const boardRows = 10;
@@ -39,6 +40,7 @@ const currentTurn = ref<Side>("red");
 const winner = ref<string>("");
 const checkSide = ref<Side | null>(null);
 const endReason = ref<string | null>(null);
+const scenarioName = ref<string | null>(null);
 
 const roomSession = useMultiplayerRoomSession("chinese-chess", {
   testUserPrefix: "xiangqi",
@@ -111,6 +113,7 @@ function useChineseChessSession() {
     winner,
     checkSide,
     endReason,
+    scenarioName,
     mySide,
     canInteract,
     statusLabel,
@@ -152,12 +155,14 @@ function applyServerState(state: {
   moves?: MoveRecord[];
   endReason?: string | null;
   checkSide?: Side | null;
+  scenarioName?: string | null;
 }) {
   board.value = (state.board ?? createEmptyBoard()).map((row) => row.map((cell) => parsePiece(cell)));
   currentTurn.value = state.currentTurn ?? "red";
   winner.value = state.winner ?? "";
   checkSide.value = (state.checkSide as Side | null | undefined) ?? null;
   endReason.value = state.endReason ?? null;
+  scenarioName.value = state.scenarioName ?? null;
   moveHistory.value = state.moves ?? [];
   if (winner.value) {
     roomSession.winner.value = winner.value;
@@ -173,6 +178,7 @@ function resetBoard() {
   winner.value = "";
   checkSide.value = null;
   endReason.value = null;
+  scenarioName.value = null;
   roomSession.winner.value = "";
   syncWindowHelpers();
 }
@@ -301,6 +307,7 @@ function handleChineseChessMessage(parsed: ServerWsEnvelope, helpers: {
       checkSide?: Side | null;
       moves?: MoveRecord[];
       endReason?: string | null;
+      scenarioName?: string | null;
     }>>(parsed.payload);
     if (payload) {
       if (payload.playerStones && helpers.currentUser.value) {
@@ -340,6 +347,7 @@ function syncWindowHelpers() {
     winner: winner.value || null,
     checkSide: checkSide.value,
     endReason: endReason.value,
+    scenarioName: scenarioName.value,
     selectedCell: selectedCell.value,
     latestMove: moveHistory.value.at(-1) ?? null,
     pieces: boardPieces.value

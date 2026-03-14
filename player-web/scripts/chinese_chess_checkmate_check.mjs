@@ -68,11 +68,17 @@ async function main() {
 
     await pageA.waitForFunction(() => {
       const state = JSON.parse(window.render_game_to_text());
-      return state.endReason === "checkmate" && state.winner === "red";
+      return state.endReason === "checkmate"
+        && state.winner === "red"
+        && state.scenarioName === "checkmate_red"
+        && Array.isArray(state.pieces)
+        && state.pieces.length === 5;
     }, null, { timeout: 10000 });
     await pageB.waitForFunction(() => {
       const state = JSON.parse(window.render_game_to_text());
-      return state.endReason === "checkmate" && state.winner === "red";
+      return state.endReason === "checkmate"
+        && state.winner === "red"
+        && state.scenarioName === "checkmate_red";
     }, null, { timeout: 10000 });
 
     const stateA = JSON.parse(await pageA.evaluate(() => window.render_game_to_text()));
