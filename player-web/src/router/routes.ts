@@ -1,6 +1,9 @@
 import type { RouteRecordRaw } from "vue-router";
 import { createGameRoute } from "../sdk/GameRegistry";
 import { gameRegistry } from "../sdk/registry";
+import ChineseChessShell from "../games/chinese-chess/ChineseChessShell.vue";
+import ChineseChessRoomView from "../games/chinese-chess/ChineseChessRoomView.vue";
+import ChineseChessMatchView from "../games/chinese-chess/ChineseChessMatchView.vue";
 import GomokuShell from "../games/gomoku/GomokuShell.vue";
 import GomokuRoomView from "../games/gomoku/GomokuRoomView.vue";
 import GomokuMatchView from "../games/gomoku/GomokuMatchView.vue";
@@ -19,5 +22,14 @@ export const routes: RouteRecordRaw[] = [
       { path: "match", component: GomokuMatchView }
     ]
   },
-  ...gameRegistry.getAllGames().filter((game) => game.gameCode !== "gomoku").map(createGameRoute)
+  {
+    path: "/games/chinese-chess",
+    component: ChineseChessShell,
+    children: [
+      { path: "", redirect: "/games/chinese-chess/room" },
+      { path: "room", component: ChineseChessRoomView },
+      { path: "match", component: ChineseChessMatchView }
+    ]
+  },
+  ...gameRegistry.getAllGames().filter((game) => !["gomoku", "chinese-chess"].includes(game.gameCode)).map(createGameRoute)
 ];
