@@ -204,6 +204,7 @@ public final class RuleEngines {
             data.put("currentTurn", "red");
             data.put("winner", null);
             data.put("checkSide", null);
+            data.put("endReason", null);
             data.put("moves", new ArrayList<Map<String, Object>>());
             return new GameState(getGameCode(), data);
         }
@@ -284,10 +285,18 @@ public final class RuleEngines {
             if ("general".equals(pieceKind(captured))) {
                 state.data().put("winner", pieceSide(piece));
                 state.data().put("checkSide", null);
+                state.data().put("endReason", "captured_general");
             } else {
                 String nextTurn = "red".equals(pieceSide(piece)) ? "black" : "red";
                 state.data().put("currentTurn", nextTurn);
-                state.data().put("checkSide", isSideInCheck(board, nextTurn) ? nextTurn : null);
+                boolean inCheck = isSideInCheck(board, nextTurn);
+                state.data().put("checkSide", inCheck ? nextTurn : null);
+                if (!hasAnyLegalMove(board, nextTurn)) {
+                    state.data().put("winner", pieceSide(piece));
+                    state.data().put("endReason", inCheck ? "checkmate" : "stalemate");
+                } else {
+                    state.data().put("endReason", null);
+                }
             }
             return state;
         }
@@ -302,7 +311,8 @@ public final class RuleEngines {
             return new MatchResult(getGameCode(), "", null, Map.of(
                     "winnerStone", state.data().get("winner"),
                     "currentTurn", state.data().get("currentTurn"),
-                    "moves", state.data().get("moves")
+                    "moves", state.data().get("moves"),
+                    "endReason", state.data().get("endReason")
             ));
         }
 
@@ -423,6 +433,41 @@ public final class RuleEngines {
                     }
                     if (isLegalMove(board, piece, row, col, general[0], general[1])) {
                         return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private static boolean hasAnyLegalMove(String[][] board, String side) {
+            for (int fromRow = 0; fromRow < ROWS; fromRow += 1) {
+                for (int fromCol = 0; fromCol < COLS; fromCol += 1) {
+                    String piece = board[fromRow][fromCol];
+                    if (piece == null || !side.equals(pieceSide(piece))) {
+                        continue;
+                    }
+                    for (int toRow = 0; toRow < ROWS; toRow += 1) {
+                        for (int toCol = 0; toCol < COLS; toCol += 1) {
+                            if (fromRow == toRow && fromCol == toCol) {
+                                continue;
+                            }
+                            String target = board[toRow][toCol];
+                            if (target != null && side.equals(pieceSide(target))) {
+                                continue;
+                            }
+                            if (!isLegalMove(board, piece, fromRow, fromCol, toRow, toCol)) {
+                                continue;
+                            }
+                            String[][] nextBoard = cloneBoard(board);
+                            nextBoard[toRow][toCol] = piece;
+                            nextBoard[fromRow][fromCol] = null;
+                            if (areGeneralsFacing(nextBoard)) {
+                                continue;
+                            }
+                            if (!isSideInCheck(nextBoard, side)) {
+                                return true;
+                            }
+                        }
                     }
                 }
             }

@@ -43,6 +43,8 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Added a Chinese Chess invalid-move regression alongside the valid move script, then re-ran both; a legal opening pawn move still syncs, while an illegal sideways opening pawn move is rejected with no board change.
 - Added broader Xiangqi move coverage: legal horse and cannon opening moves now have dedicated dual-client regression scripts, and all four current scripts (valid pawn, invalid pawn, horse, cannon) pass against the same authoritative websocket flow.
 - Added a stronger match-view warning hook for future check states so the UI can call out danger more clearly once we surface richer checking scenarios.
+- Extended Xiangqi endgame handling in the rule engine: after each move the server now checks whether the defending side has any legal reply left, allowing future checkmate/stalemate resolution instead of only ending on general capture.
+- Added a cannon capture regression that proves screen-capture logic over WebSocket: the opening red cannon can hop the black cannon and capture the black horse on `(0,1)`, and both clients converge on the captured-board state.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
@@ -53,4 +55,5 @@ TODO:
 - Continue deepening Xiangqi rules: enforce general-facing/check constraints, add check/checkmate awareness, and grow the automated move coverage beyond the opening pawn step.
 - Continue deepening Xiangqi rules: add explicit checkmate/stalemate resolution, surface check indicators more prominently in the UI, and grow automated coverage beyond pawn-openers into rook/cannon/horse interactions.
 - Continue deepening Xiangqi rules: add explicit checkmate/stalemate resolution, drive the new check warning with real forced-check scenarios, and grow automated coverage toward captures and cannon screens.
+- Continue deepening Xiangqi rules: surface real checkmate/stalemate outcomes in the UI, add forced-check scenarios that light up the warning banner, and keep expanding capture/regression coverage.
 - Add a cleaner persistent dev-start workflow for backend and frontend.
