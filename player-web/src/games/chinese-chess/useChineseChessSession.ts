@@ -62,6 +62,16 @@ const statusLabel = computed(() => {
   }
   return `${currentTurn.value} to move`;
 });
+
+const statusTone = computed(() => {
+  if (winner.value) {
+    return 'winner';
+  }
+  if (checkSide.value) {
+    return 'check';
+  }
+  return 'normal';
+});
 const selectionLabel = computed(() => {
   if (!selectedCell.value) {
     return "Select one of your pieces to move.";
@@ -92,6 +102,7 @@ function useChineseChessSession() {
     mySide,
     canInteract,
     statusLabel,
+    statusTone,
     selectionLabel,
     boardPieces,
     clickCell,
@@ -190,22 +201,22 @@ function pieceLabel(piece: Piece) {
   }
   const labels: Record<Side, Record<PieceCode, string>> = {
     red: {
-      rook: "俥",
-      horse: "傌",
-      elephant: "相",
-      advisor: "仕",
-      general: "帅",
-      cannon: "炮",
-      pawn: "兵"
+      rook: "\u4fe5",
+      horse: "\u508c",
+      elephant: "\u76f8",
+      advisor: "\u4ed5",
+      general: "\u5e05",
+      cannon: "\u70ae",
+      pawn: "\u5175"
     },
     black: {
-      rook: "車",
-      horse: "馬",
-      elephant: "象",
-      advisor: "士",
-      general: "将",
-      cannon: "砲",
-      pawn: "卒"
+      rook: "\u8eca",
+      horse: "\u99ac",
+      elephant: "\u8c61",
+      advisor: "\u58eb",
+      general: "\u5c07",
+      cannon: "\u7832",
+      pawn: "\u5352"
     }
   };
   return labels[piece.side][piece.kind];
@@ -292,3 +303,4 @@ function syncWindowHelpers() {
 }
 
 export { useChineseChessSession };
+

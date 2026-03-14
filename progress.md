@@ -41,6 +41,8 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Added a dedicated Chinese Chess session/view layer on the frontend with live board rendering, click-to-select / click-to-move interaction, move feed, and shared websocket sync, then verified a dual-client red pawn move end-to-end.
 - Tightened Xiangqi rules another step: the backend now rejects moves that leave your own general in check or create a general-facing file, and it surfaces `checkSide` so the frontend can reflect that danger state.
 - Added a Chinese Chess invalid-move regression alongside the valid move script, then re-ran both; a legal opening pawn move still syncs, while an illegal sideways opening pawn move is rejected with no board change.
+- Added broader Xiangqi move coverage: legal horse and cannon opening moves now have dedicated dual-client regression scripts, and all four current scripts (valid pawn, invalid pawn, horse, cannon) pass against the same authoritative websocket flow.
+- Added a stronger match-view warning hook for future check states so the UI can call out danger more clearly once we surface richer checking scenarios.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
@@ -50,4 +52,5 @@ TODO:
 - Continue polishing Draw and Guess: add a stronger round-end celebration banner, optional auto-advance/host confirmation, and richer drawer feedback while sketching.
 - Continue deepening Xiangqi rules: enforce general-facing/check constraints, add check/checkmate awareness, and grow the automated move coverage beyond the opening pawn step.
 - Continue deepening Xiangqi rules: add explicit checkmate/stalemate resolution, surface check indicators more prominently in the UI, and grow automated coverage beyond pawn-openers into rook/cannon/horse interactions.
+- Continue deepening Xiangqi rules: add explicit checkmate/stalemate resolution, drive the new check warning with real forced-check scenarios, and grow automated coverage toward captures and cannon screens.
 - Add a cleaner persistent dev-start workflow for backend and frontend.

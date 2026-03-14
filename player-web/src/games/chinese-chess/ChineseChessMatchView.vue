@@ -29,6 +29,7 @@
           </div>
         </div>
         <p class="selection-copy">{{ selectionLabel }}</p>
+        <p v-if="statusTone === 'check'" class="check-banner">Alert: {{ statusLabel }}</p>
         <p class="river-copy">楚河汉界</p>
       </article>
 
@@ -97,6 +98,7 @@ const {
   mySide,
   roomPlayers,
   statusLabel,
+  statusTone,
   selectionLabel,
   clickCell,
   cellClasses,
@@ -219,6 +221,16 @@ button {
   color: #7a4718;
 }
 
+.check-banner {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 230, 226, 0.95);
+  border: 1px solid rgba(176, 58, 38, 0.28);
+  color: #9e2c1c;
+  font-weight: 600;
+}
+
 .board-panel {
   overflow: hidden;
 }
@@ -298,3 +310,4 @@ button {
   line-height: 1.65;
 }
 </style>
+
