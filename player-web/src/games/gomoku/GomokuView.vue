@@ -1,87 +1,165 @@
 <template>
   <div class="gomoku-page">
     <section class="hero">
-      <div>
-        <p class="eyebrow">WebGame Multiplayer Lab</p>
-        <h1>Gomoku Online Prototype</h1>
+      <div class="hero-copy">
+        <p class="eyebrow">Board Game Room Flow</p>
+        <h1>Gomoku now runs as a proper room-to-match experience.</h1>
         <p class="subtitle">
-          先用一版可玩的五子棋联机页把房间、准备、开始和落子同步跑通。
+          We keep login, room staging, ready checks, and the live board in one route for now,
+          but the interface is split into clear phases so the same pattern can be reused for
+          Chinese Chess and Draw and Guess.
         </p>
       </div>
-      <div class="auth-card">
-        <h2>Quick Login</h2>
-        <label>
-          Username
-          <input id="login-username" v-model="loginForm.username" />
-        </label>
-        <label>
-          Password
-          <input id="login-password" v-model="loginForm.password" type="password" />
-        </label>
-        <button id="login-btn" @click="login" :disabled="loading.login">
-          {{ loading.login ? "Signing In..." : "Login" }}
-        </button>
-        <button id="quick-start-btn" @click="quickStart" :disabled="loading.login || loading.roomCreate">
-          Quick Start
-        </button>
-        <button class="ghost" @click="registerTestUser" :disabled="loading.register">
-          {{ loading.register ? "Creating..." : "Create Test User" }}
-        </button>
-        <p class="hint">{{ authHint }}</p>
+      <div class="phase-card">
+        <p class="phase-label">Current Phase</p>
+        <strong>{{ phaseTitle }}</strong>
+        <p>{{ phaseDescription }}</p>
+        <div class="phase-pills">
+          <span :class="phaseClass('auth')">1. Login</span>
+          <span :class="phaseClass('room')">2. Room</span>
+          <span :class="phaseClass('match')">3. Match</span>
+        </div>
       </div>
     </section>
 
     <section class="workspace">
       <aside class="sidebar">
-        <div class="panel">
-          <h3>Room Controls</h3>
+        <article class="panel auth-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="kicker">Account</p>
+              <h2>Sign in for the room</h2>
+            </div>
+            <span class="badge" :class="token ? 'online' : 'offline'">
+              {{ token ? 'signed in' : 'guest' }}
+            </span>
+          </div>
+
+          <label>
+            Username
+            <input id="login-username" v-model="loginForm.username" />
+          </label>
+          <label>
+            Password
+            <input id="login-password" v-model="loginForm.password" type="password" />
+          </label>
+          <div class="row">
+            <button id="login-btn" @click="login" :disabled="loading.login">
+              {{ loading.login ? 'Signing In...' : 'Login' }}
+            </button>
+            <button id="quick-start-btn" class="ghost" @click="quickStart" :disabled="loading.login || loading.roomCreate">
+              Quick Start
+            </button>
+          </div>
+          <button class="ghost wide" @click="registerTestUser" :disabled="loading.register">
+            {{ loading.register ? 'Creating...' : 'Create Test User' }}
+          </button>
+          <p class="hint">{{ authHint }}</p>
+        </article>
+
+        <article class="panel room-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="kicker">Room Setup</p>
+              <h2>{{ inMatch ? 'Match is live' : 'Prepare the table' }}</h2>
+            </div>
+            <span class="badge" :class="socketConnected ? 'online' : 'offline'">
+              {{ socketConnected ? 'socket ready' : 'socket offline' }}
+            </span>
+          </div>
+
           <div class="row">
             <button @click="createRoom" :disabled="!token || loading.roomCreate">Create Room</button>
             <button class="ghost" @click="connectSocket" :disabled="!token || socketConnected">Connect WS</button>
           </div>
+
           <label>
             Room Code
             <input id="room-code-input" v-model="roomCodeInput" placeholder="BF79F4" />
           </label>
+
           <div class="row">
             <button id="join-room-btn" @click="joinRoomViaSocket" :disabled="!canJoinRoom">Join Room</button>
             <button id="ready-btn" class="ghost" @click="sendReady" :disabled="!activeRoomCode || !socketConnected">Ready</button>
-            <button id="start-btn" class="ghost" @click="startMatch" :disabled="!activeRoomCode || !socketConnected">Start</button>
+            <button id="start-btn" class="ghost" @click="startMatch" :disabled="!canStartMatch">Start</button>
+          </div>
+
+          <dl class="stats compact">
+            <div><dt>User</dt><dd>{{ currentUser?.username ?? '-' }}</dd></div>
+            <div><dt>Room</dt><dd id="active-room-code">{{ activeRoomCode || '-' }}</dd></div>
+            <div><dt>Match</dt><dd id="active-match-code">{{ matchCode || '-' }}</dd></div>
+            <div><dt>Stone</dt><dd id="my-stone">{{ myStoneLabel }}</dd></div>
+          </dl>
+
+          <div class="roster">
+            <div class="seat" :class="seatTone(0)">
+              <p class="seat-label">Black Seat</p>
+              <strong>{{ blackPlayerName }}</strong>
+              <span>{{ seatStatus(0) }}</span>
+            </div>
+            <div class="seat" :class="seatTone(1)">
+              <p class="seat-label">White Seat</p>
+              <strong>{{ whitePlayerName }}</strong>
+              <span>{{ seatStatus(1) }}</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel asset-panel">
+          <div class="panel-heading tight">
+            <div>
+              <p class="kicker">Player Snapshot</p>
+              <h2>Carry platform data into the match</h2>
+            </div>
           </div>
           <dl class="stats">
-            <div><dt>User</dt><dd>{{ currentUser?.username ?? "-" }}</dd></div>
             <div><dt>Coins</dt><dd>{{ asset.coin }}</dd></div>
             <div><dt>Score</dt><dd>{{ asset.score }}</dd></div>
-            <div><dt>Room</dt><dd id="active-room-code">{{ activeRoomCode || "-" }}</dd></div>
-            <div><dt>Status</dt><dd>{{ socketConnected ? "socket ready" : "offline" }}</dd></div>
             <div><dt>Turn</dt><dd>{{ currentTurnLabel }}</dd></div>
-            <div><dt>Stone</dt><dd id="my-stone">{{ myStoneLabel }}</dd></div>
-            <div><dt>Match</dt><dd id="active-match-code">{{ matchCode || "-" }}</dd></div>
+            <div><dt>Winner</dt><dd>{{ winner || '-' }}</dd></div>
           </dl>
-        </div>
+        </article>
+      </aside>
 
-        <div class="panel">
-          <h3>Room Feed</h3>
+      <main class="main-stage">
+        <article class="board-panel panel">
+          <div class="panel-heading board-heading">
+            <div>
+              <p class="kicker">Live Table</p>
+              <h2>{{ boardHeading }}</h2>
+            </div>
+            <span class="board-badge">{{ boardStatus }}</span>
+          </div>
+
+          <p class="board-copy">{{ boardCopy }}</p>
+
+          <div class="board-frame" :class="{ waiting: !inMatch }">
+            <canvas ref="canvasRef" width="720" height="720" @click="handleCanvasClick" />
+            <div v-if="!inMatch" class="board-overlay">
+              <strong>Room is staging</strong>
+              <span>Login, connect the socket, join the same room, and get both players ready.</span>
+            </div>
+          </div>
+
+          <div class="legend">
+            <span>Black: {{ blackPlayerName }}</span>
+            <span>White: {{ whitePlayerName }}</span>
+            <span>Turn: {{ currentTurnLabel }}</span>
+            <span v-if="winner">Winner: {{ winner }}</span>
+          </div>
+        </article>
+
+        <article class="panel feed-panel">
+          <div class="panel-heading tight">
+            <div>
+              <p class="kicker">Room Feed</p>
+              <h2>Everything the room just did</h2>
+            </div>
+          </div>
           <ul class="feed">
             <li v-for="entry in roomFeed" :key="entry.id">{{ entry.text }}</li>
           </ul>
-        </div>
-      </aside>
-
-      <main class="board-shell">
-        <div class="board-frame">
-          <canvas
-            ref="canvasRef"
-            width="720"
-            height="720"
-            @click="handleCanvasClick"
-          />
-        </div>
-        <div class="legend">
-          <span>Black: {{ blackPlayerName }}</span>
-          <span>White: {{ whitePlayerName }}</span>
-          <span v-if="winner">Winner: {{ winner }}</span>
-        </div>
+        </article>
       </main>
     </section>
   </div>
@@ -109,6 +187,8 @@ type WsEnvelope = {
   matchCode?: string;
   payload?: string;
 };
+
+type RoomPlayer = { userId: number; readyStatus: number; seatNo: number };
 
 const boardSize = 15;
 const canvasSize = 720;
@@ -142,19 +222,89 @@ const board = ref<Stone[][]>(createEmptyBoard());
 const moveHistory = ref<Array<{ row: number; col: number; stone: Exclude<Stone, null> }>>([]);
 const currentTurn = ref<Exclude<Stone, null>>("black");
 const winner = ref("");
-const roomPlayers = ref<Array<{ userId: number; readyStatus: number; seatNo: number }>>([]);
+const roomPlayers = ref<RoomPlayer[]>([]);
 const animationCounter = ref(0);
 const matchCode = ref("");
 const myStone = ref<Exclude<Stone, null> | "spectator">("spectator");
 
-const blackPlayerName = computed(() => roomPlayers.value[0]?.userId ? `User #${roomPlayers.value[0].userId}` : "Seat 1");
-const whitePlayerName = computed(() => roomPlayers.value[1]?.userId ? `User #${roomPlayers.value[1].userId}` : "Seat 2");
+const inMatch = computed(() => !!matchCode.value && roomPlayers.value.length >= 2);
+const phase = computed(() => {
+  if (!token.value || !currentUser.value) return "auth";
+  if (!activeRoomCode.value || !socketConnected.value || !inMatch.value) return "room";
+  return "match";
+});
+const phaseTitle = computed(() => ({
+  auth: "Authenticate",
+  room: "Assemble the room",
+  match: "Play the live match"
+}[phase.value]));
+const phaseDescription = computed(() => ({
+  auth: "Use the seeded admin account or a test account so the page can fetch assets and open the realtime socket.",
+  room: "Create or join a room, wait for both players to connect, and only then start the match.",
+  match: "The server now validates every move and broadcasts the authoritative state back to both clients."
+}[phase.value]));
+const boardHeading = computed(() => inMatch.value ? "Authoritative live board" : "Waiting for both players");
+const boardStatus = computed(() => inMatch.value ? `${currentTurn.value} to move` : "staging room");
+const boardCopy = computed(() => inMatch.value
+  ? "Moves are only painted after the backend accepts them, so both browsers stay in sync."
+  : "The board is visible early so players can see the table they are about to use, but input stays locked until the match starts.");
+const blackPlayerName = computed(() => playerNameBySeat(0, "Seat 1"));
+const whitePlayerName = computed(() => playerNameBySeat(1, "Seat 2"));
 const currentTurnLabel = computed(() => winner.value ? "finished" : currentTurn.value);
 const myStoneLabel = computed(() => myStone.value);
 const canJoinRoom = computed(() => !!roomCodeInput.value && !!token.value && socketConnected.value);
+const canStartMatch = computed(() => !!activeRoomCode.value && !!socketConnected.value && roomPlayers.value.length >= 2);
+
+function authorizeWindowHelpers() {
+  (window as any).render_game_to_text = () => JSON.stringify({
+    mode: winner.value ? "finished" : inMatch.value ? "playing" : "room",
+    phase: phase.value,
+    note: "origin is top-left, rows grow downward, cols grow rightward",
+    roomCode: activeRoomCode.value || null,
+    matchCode: matchCode.value || null,
+    myStone: myStone.value,
+    socketConnected: socketConnected.value,
+    roomPlayers: roomPlayers.value,
+    turn: currentTurn.value,
+    winner: winner.value || null,
+    moves: moveHistory.value,
+    latestMove: moveHistory.value.at(-1) ?? null
+  });
+
+  (window as any).advanceTime = (ms: number) => {
+    animationCounter.value += ms;
+    renderBoard();
+    return Promise.resolve();
+  };
+}
 
 function createEmptyBoard(): Stone[][] {
   return Array.from({ length: boardSize }, () => Array.from({ length: boardSize }, () => null));
+}
+
+function playerNameBySeat(seatIndex: number, fallback: string) {
+  const player = roomPlayers.value[seatIndex];
+  return player?.userId ? `User #${player.userId}` : fallback;
+}
+
+function seatStatus(seatIndex: number) {
+  const player = roomPlayers.value[seatIndex];
+  if (!player) return "Waiting for player";
+  return player.readyStatus === 1 ? "Ready" : "Joined";
+}
+
+function seatTone(seatIndex: number) {
+  const player = roomPlayers.value[seatIndex];
+  if (!player) return "empty";
+  return player.readyStatus === 1 ? "ready" : "joined";
+}
+
+function phaseClass(target: "auth" | "room" | "match") {
+  return {
+    pill: true,
+    active: phase.value === target,
+    complete: ["auth", "room", "match"].indexOf(phase.value) > ["auth", "room", "match"].indexOf(target)
+  };
 }
 
 function pushFeed(text: string) {
@@ -168,7 +318,7 @@ function resetBoard() {
   currentTurn.value = "black";
   winner.value = "";
   renderBoard();
-  syncWindowHelpers();
+  authorizeWindowHelpers();
 }
 
 async function login() {
@@ -243,6 +393,8 @@ async function createRoom() {
     if (result.success) {
       roomCodeInput.value = result.data.roomCode;
       activeRoomCode.value = result.data.roomCode;
+      matchCode.value = "";
+      myStone.value = "spectator";
       pushFeed(`Created room ${result.data.roomCode}`);
     } else {
       pushFeed(result.message);
@@ -304,7 +456,7 @@ function startMatch() {
 }
 
 function handleCanvasClick(event: MouseEvent) {
-  if (!activeRoomCode.value || !socketConnected.value || winner.value || myStone.value === "spectator") {
+  if (!inMatch.value || !activeRoomCode.value || !socketConnected.value || winner.value || myStone.value === "spectator") {
     return;
   }
   if (myStone.value !== currentTurn.value) {
@@ -348,7 +500,7 @@ function applyMove(row: number, col: number, stone: Exclude<Stone, null>) {
     currentTurn.value = stone === "black" ? "white" : "black";
   }
   renderBoard();
-  syncWindowHelpers();
+  authorizeWindowHelpers();
 }
 
 function applyServerState(serverState: {
@@ -371,16 +523,11 @@ function applyServerState(serverState: {
   currentTurn.value = serverState.currentTurn ?? currentTurn.value;
   winner.value = serverState.winner ?? "";
   renderBoard();
-  syncWindowHelpers();
+  authorizeWindowHelpers();
 }
 
 function checkWinner(row: number, col: number, stone: Exclude<Stone, null>) {
-  const directions = [
-    [1, 0],
-    [0, 1],
-    [1, 1],
-    [1, -1]
-  ];
+  const directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
   return directions.some(([dr, dc]) => {
     let count = 1;
     count += countDirection(row, col, dr, dc, stone);
@@ -521,7 +668,7 @@ function handleSocketMessage(event: MessageEvent) {
     winner.value = result.winnerStone ?? winner.value;
     pushFeed(`Match finished. Winner: ${winner.value || "n/a"}`);
     renderBoard();
-    syncWindowHelpers();
+    authorizeWindowHelpers();
     return;
   }
 
@@ -531,7 +678,7 @@ function handleSocketMessage(event: MessageEvent) {
       roomStatus: number;
       currentPlayers: number;
       maxPlayers: number;
-      players: Array<{ userId: number; readyStatus: number; seatNo: number }>;
+      players: RoomPlayer[];
     };
     roomPlayers.value = roomState.players ?? [];
     pushFeed(`Room ${roomState.roomCode}: ${roomState.currentPlayers}/${roomState.maxPlayers} players`);
@@ -550,28 +697,6 @@ function handleSocketMessage(event: MessageEvent) {
   pushFeed(`WS ${parsed.type}`);
 }
 
-function syncWindowHelpers() {
-  (window as any).render_game_to_text = () => JSON.stringify({
-    mode: winner.value ? "finished" : "playing",
-    note: "origin is top-left, rows grow downward, cols grow rightward",
-    roomCode: activeRoomCode.value || null,
-    matchCode: matchCode.value || null,
-    myStone: myStone.value,
-    socketConnected: socketConnected.value,
-    roomPlayers: roomPlayers.value,
-    turn: currentTurn.value,
-    winner: winner.value || null,
-    moves: moveHistory.value,
-    latestMove: moveHistory.value.at(-1) ?? null
-  });
-
-  (window as any).advanceTime = (ms: number) => {
-    animationCounter.value += ms;
-    renderBoard();
-    return Promise.resolve();
-  };
-}
-
 function pause(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -581,7 +706,7 @@ onMounted(() => {
   if (!canvas) return;
   ctxRef.value = canvas.getContext("2d");
   renderBoard();
-  syncWindowHelpers();
+  authorizeWindowHelpers();
 
   socketClient.onOpen(() => {
     socketConnected.value = true;
@@ -620,36 +745,56 @@ onBeforeUnmount(() => {
 }
 
 .hero {
-  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
   margin-bottom: 24px;
 }
 
-.eyebrow {
+.hero-copy {
+  padding: 8px 0;
+}
+
+.eyebrow,
+.kicker,
+.phase-label,
+.seat-label {
   margin: 0 0 10px;
-  font-size: 13px;
-  letter-spacing: 0.28em;
+  font-size: 12px;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
 }
 
-h1 {
-  margin: 0;
-  font-size: clamp(42px, 5vw, 72px);
-  line-height: 0.92;
+h1,
+h2,
+p,
+strong {
+  margin-top: 0;
 }
 
-.subtitle {
-  max-width: 720px;
-  font-size: 18px;
+h1 {
+  margin-bottom: 12px;
+  font-size: clamp(42px, 5vw, 72px);
+  line-height: 0.94;
+}
+
+h2 {
+  margin-bottom: 0;
+  font-size: 24px;
+}
+
+.subtitle,
+.board-copy,
+.phase-card p,
+.hint {
   line-height: 1.6;
 }
 
-.workspace {
-  grid-template-columns: 320px minmax(0, 1fr);
-  align-items: start;
+.subtitle {
+  max-width: 760px;
+  font-size: 18px;
 }
 
+.phase-card,
 .panel,
-.auth-card,
 .board-frame {
   border: 1px solid rgba(72, 38, 10, 0.18);
   border-radius: 24px;
@@ -658,13 +803,85 @@ h1 {
   backdrop-filter: blur(8px);
 }
 
-.auth-card,
+.phase-card,
 .panel {
-  padding: 18px;
+  padding: 20px;
 }
 
-.panel + .panel {
+.phase-card strong {
+  display: block;
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+
+.phase-pills {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
   margin-top: 18px;
+}
+
+.pill {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255, 251, 242, 0.75);
+  color: rgba(74, 37, 9, 0.72);
+}
+
+.pill.active {
+  background: linear-gradient(135deg, #4a240a, #9a5f27);
+  color: #fff4e0;
+}
+
+.pill.complete {
+  background: rgba(112, 76, 31, 0.16);
+  color: #4a2509;
+}
+
+.workspace {
+  grid-template-columns: 340px minmax(0, 1fr);
+  align-items: start;
+}
+
+.sidebar,
+.main-stage {
+  display: grid;
+  gap: 18px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.panel-heading.tight {
+  margin-bottom: 10px;
+}
+
+.badge,
+.board-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.badge.online,
+.board-badge {
+  color: #fff5df;
+  background: linear-gradient(135deg, #3f1f09, #87501f);
+}
+
+.badge.offline {
+  color: #4a2509;
+  background: rgba(255, 249, 236, 0.9);
 }
 
 .row {
@@ -706,15 +923,14 @@ button.ghost {
   background: rgba(255, 249, 236, 0.9);
 }
 
+button.wide {
+  width: 100%;
+  margin-top: 12px;
+}
+
 button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-}
-
-.hint {
-  margin: 14px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
 }
 
 .stats {
@@ -724,8 +940,13 @@ button:disabled {
   margin: 14px 0 0;
 }
 
-.stats div {
-  padding: 10px 12px;
+.stats.compact {
+  margin-top: 18px;
+}
+
+.stats div,
+.seat {
+  padding: 12px;
   border-radius: 16px;
   background: rgba(255, 253, 245, 0.78);
 }
@@ -741,20 +962,44 @@ dd {
   font-size: 18px;
 }
 
-.feed {
-  margin: 12px 0 0;
-  padding-left: 18px;
-  line-height: 1.55;
+.roster {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
 }
 
-.board-shell {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.seat strong,
+.seat span {
+  display: block;
+}
+
+.seat.ready {
+  background: linear-gradient(180deg, rgba(255, 252, 245, 0.95), rgba(241, 220, 180, 0.72));
+}
+
+.seat.joined {
+  background: rgba(255, 249, 239, 0.84);
+}
+
+.seat.empty {
+  opacity: 0.72;
+}
+
+.main-stage {
+  grid-template-rows: auto auto;
+}
+
+.board-panel {
+  overflow: hidden;
 }
 
 .board-frame {
+  position: relative;
   padding: 18px;
+}
+
+.board-frame.waiting {
+  filter: saturate(0.9);
 }
 
 canvas {
@@ -766,17 +1011,47 @@ canvas {
   box-shadow: inset 0 0 0 1px rgba(73, 41, 14, 0.16);
 }
 
+.board-overlay {
+  position: absolute;
+  inset: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(44, 23, 8, 0.12), rgba(44, 23, 8, 0.36));
+  color: #fff8ed;
+  text-align: center;
+  padding: 24px;
+}
+
+.board-overlay strong {
+  font-size: 28px;
+}
+
 .legend {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 0 10px;
+  padding-top: 14px;
   font-size: 15px;
 }
 
-@media (max-width: 980px) {
-  .hero,
+.feed {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.65;
+}
+
+@media (max-width: 1080px) {
   .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .hero {
     grid-template-columns: 1fr;
   }
 }
