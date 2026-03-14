@@ -38,6 +38,7 @@ const moveHistory = ref<MoveRecord[]>([]);
 const currentTurn = ref<Side>("red");
 const winner = ref<string>("");
 const checkSide = ref<Side | null>(null);
+const endReason = ref<string | null>(null);
 
 const roomSession = useMultiplayerRoomSession("chinese-chess", {
   testUserPrefix: "xiangqi",
@@ -55,6 +56,15 @@ const canInteract = computed(() =>
 );
 const statusLabel = computed(() => {
   if (winner.value) {
+    if (endReason.value === "checkmate") {
+      return `${winner.value} wins by checkmate`;
+    }
+    if (endReason.value === "stalemate") {
+      return `${winner.value} wins by stalemate`;
+    }
+    if (endReason.value === "captured_general") {
+      return `${winner.value} captured the general`;
+    }
     return `${winner.value} wins`;
   }
   if (checkSide.value) {
@@ -99,6 +109,7 @@ function useChineseChessSession() {
     currentTurn,
     winner,
     checkSide,
+    endReason,
     mySide,
     canInteract,
     statusLabel,
@@ -130,11 +141,14 @@ function applyServerState(state: {
   currentTurn?: Side;
   winner?: string | null;
   moves?: MoveRecord[];
+  endReason?: string | null;
+  checkSide?: Side | null;
 }) {
   board.value = (state.board ?? createEmptyBoard()).map((row) => row.map((cell) => parsePiece(cell)));
   currentTurn.value = state.currentTurn ?? "red";
   winner.value = state.winner ?? "";
   checkSide.value = (state.checkSide as Side | null | undefined) ?? null;
+  endReason.value = state.endReason ?? null;
   moveHistory.value = state.moves ?? [];
   if (winner.value) {
     roomSession.winner.value = winner.value;
@@ -149,6 +163,7 @@ function resetBoard() {
   currentTurn.value = "red";
   winner.value = "";
   checkSide.value = null;
+  endReason.value = null;
   roomSession.winner.value = "";
   syncWindowHelpers();
 }
@@ -262,6 +277,7 @@ function handleChineseChessMessage(parsed: ServerWsEnvelope, helpers: {
       winner?: string | null;
       checkSide?: Side | null;
       moves?: MoveRecord[];
+      endReason?: string | null;
     }>>(parsed.payload);
     if (payload) {
       if (payload.playerStones && helpers.currentUser.value) {
@@ -295,6 +311,7 @@ function syncWindowHelpers() {
     turn: currentTurn.value,
     winner: winner.value || null,
     checkSide: checkSide.value,
+    endReason: endReason.value,
     selectedCell: selectedCell.value,
     latestMove: moveHistory.value.at(-1) ?? null,
     pieces: boardPieces.value

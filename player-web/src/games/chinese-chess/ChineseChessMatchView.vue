@@ -18,6 +18,7 @@
           <div><dt>Turn</dt><dd>{{ currentTurn }}</dd></div>
           <div><dt>Status</dt><dd>{{ statusLabel }}</dd></div>
           <div><dt>Winner</dt><dd>{{ winner || "-" }}</dd></div>
+          <div><dt>End</dt><dd>{{ endReason || "-" }}</dd></div>
         </dl>
       </article>
 
@@ -95,6 +96,7 @@ const {
   moveHistory,
   currentTurn,
   winner,
+  endReason,
   mySide,
   roomPlayers,
   statusLabel,

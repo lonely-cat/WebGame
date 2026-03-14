@@ -45,6 +45,8 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Added a stronger match-view warning hook for future check states so the UI can call out danger more clearly once we surface richer checking scenarios.
 - Extended Xiangqi endgame handling in the rule engine: after each move the server now checks whether the defending side has any legal reply left, allowing future checkmate/stalemate resolution instead of only ending on general capture.
 - Added a cannon capture regression that proves screen-capture logic over WebSocket: the opening red cannon can hop the black cannon and capture the black horse on `(0,1)`, and both clients converge on the captured-board state.
+- Surfaced Xiangqi end reasons on the frontend state path so the match UI can distinguish general capture, checkmate, and stalemate once those outcomes occur.
+- Added a real forced-check regression: after a short opening sequence, the red cannon lands on `(4,4)` and both clients report `checkSide = black`, which means the warning hook is now backed by a genuine game state instead of placeholder logic.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
@@ -56,4 +58,5 @@ TODO:
 - Continue deepening Xiangqi rules: add explicit checkmate/stalemate resolution, surface check indicators more prominently in the UI, and grow automated coverage beyond pawn-openers into rook/cannon/horse interactions.
 - Continue deepening Xiangqi rules: add explicit checkmate/stalemate resolution, drive the new check warning with real forced-check scenarios, and grow automated coverage toward captures and cannon screens.
 - Continue deepening Xiangqi rules: surface real checkmate/stalemate outcomes in the UI, add forced-check scenarios that light up the warning banner, and keep expanding capture/regression coverage.
+- Continue deepening Xiangqi rules: render real end reasons/check banners more prominently in the UI, add forced mate/stalemate regression scenarios, and keep expanding capture/regression coverage.
 - Add a cleaner persistent dev-start workflow for backend and frontend.
