@@ -37,6 +37,7 @@ const selectedCell = ref<{ row: number; col: number } | null>(null);
 const moveHistory = ref<MoveRecord[]>([]);
 const currentTurn = ref<Side>("red");
 const winner = ref<string>("");
+const checkSide = ref<Side | null>(null);
 
 const roomSession = useMultiplayerRoomSession("chinese-chess", {
   testUserPrefix: "xiangqi",
@@ -52,7 +53,15 @@ const canInteract = computed(() =>
   !winner.value &&
   mySide.value !== "spectator"
 );
-const statusLabel = computed(() => winner.value ? `${winner.value} wins` : `${currentTurn.value} to move`);
+const statusLabel = computed(() => {
+  if (winner.value) {
+    return `${winner.value} wins`;
+  }
+  if (checkSide.value) {
+    return `${checkSide.value} is in check`;
+  }
+  return `${currentTurn.value} to move`;
+});
 const selectionLabel = computed(() => {
   if (!selectedCell.value) {
     return "Select one of your pieces to move.";
@@ -79,6 +88,7 @@ function useChineseChessSession() {
     moveHistory,
     currentTurn,
     winner,
+    checkSide,
     mySide,
     canInteract,
     statusLabel,
@@ -113,6 +123,7 @@ function applyServerState(state: {
   board.value = (state.board ?? createEmptyBoard()).map((row) => row.map((cell) => parsePiece(cell)));
   currentTurn.value = state.currentTurn ?? "red";
   winner.value = state.winner ?? "";
+  checkSide.value = (state.checkSide as Side | null | undefined) ?? null;
   moveHistory.value = state.moves ?? [];
   if (winner.value) {
     roomSession.winner.value = winner.value;
@@ -126,6 +137,7 @@ function resetBoard() {
   moveHistory.value = [];
   currentTurn.value = "red";
   winner.value = "";
+  checkSide.value = null;
   roomSession.winner.value = "";
   syncWindowHelpers();
 }
@@ -237,6 +249,7 @@ function handleChineseChessMessage(parsed: ServerWsEnvelope, helpers: {
       board?: Array<Array<string | null>>;
       currentTurn?: Side;
       winner?: string | null;
+      checkSide?: Side | null;
       moves?: MoveRecord[];
     }>>(parsed.payload);
     if (payload) {
@@ -270,6 +283,7 @@ function syncWindowHelpers() {
     mySide: mySide.value,
     turn: currentTurn.value,
     winner: winner.value || null,
+    checkSide: checkSide.value,
     selectedCell: selectedCell.value,
     latestMove: moveHistory.value.at(-1) ?? null,
     pieces: boardPieces.value

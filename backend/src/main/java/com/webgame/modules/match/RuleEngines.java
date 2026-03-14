@@ -203,6 +203,7 @@ public final class RuleEngines {
             data.put("board", createInitialBoard());
             data.put("currentTurn", "red");
             data.put("winner", null);
+            data.put("checkSide", null);
             data.put("moves", new ArrayList<Map<String, Object>>());
             return new GameState(getGameCode(), data);
         }
@@ -241,6 +242,15 @@ public final class RuleEngines {
             if (!isLegalMove(board, piece, fromRow, fromCol, toRow, toCol)) {
                 return new ActionValidateResult(false, "illegal move for that piece");
             }
+            String[][] nextBoard = cloneBoard(board);
+            nextBoard[toRow][toCol] = piece;
+            nextBoard[fromRow][fromCol] = null;
+            if (areGeneralsFacing(nextBoard)) {
+                return new ActionValidateResult(false, "generals cannot face each other");
+            }
+            if (isSideInCheck(nextBoard, side)) {
+                return new ActionValidateResult(false, "move leaves your general in check");
+            }
             return new ActionValidateResult(true, "accepted");
         }
 
@@ -273,8 +283,11 @@ public final class RuleEngines {
 
             if ("general".equals(pieceKind(captured))) {
                 state.data().put("winner", pieceSide(piece));
+                state.data().put("checkSide", null);
             } else {
-                state.data().put("currentTurn", "red".equals(pieceSide(piece)) ? "black" : "red");
+                String nextTurn = "red".equals(pieceSide(piece)) ? "black" : "red";
+                state.data().put("currentTurn", nextTurn);
+                state.data().put("checkSide", isSideInCheck(board, nextTurn) ? nextTurn : null);
             }
             return state;
         }
@@ -340,6 +353,14 @@ public final class RuleEngines {
             return (String[][]) state.data().get("board");
         }
 
+        private static String[][] cloneBoard(String[][] board) {
+            String[][] cloned = new String[ROWS][COLS];
+            for (int row = 0; row < ROWS; row += 1) {
+                System.arraycopy(board[row], 0, cloned[row], 0, COLS);
+            }
+            return cloned;
+        }
+
         private static Integer readInt(Object value) {
             if (value instanceof Integer integer) {
                 return integer;
@@ -365,6 +386,47 @@ public final class RuleEngines {
                 return "";
             }
             return piece.substring(piece.indexOf('-') + 1);
+        }
+
+        private static boolean areGeneralsFacing(String[][] board) {
+            int[] red = findGeneral(board, "red");
+            int[] black = findGeneral(board, "black");
+            if (red == null || black == null || red[1] != black[1]) {
+                return false;
+            }
+            return countBlockers(board, red[0], red[1], black[0], black[1]) == 0;
+        }
+
+        private static int[] findGeneral(String[][] board, String side) {
+            String target = side + "-general";
+            for (int row = 0; row < ROWS; row += 1) {
+                for (int col = 0; col < COLS; col += 1) {
+                    if (target.equals(board[row][col])) {
+                        return new int[]{row, col};
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static boolean isSideInCheck(String[][] board, String side) {
+            int[] general = findGeneral(board, side);
+            if (general == null) {
+                return false;
+            }
+            String enemy = "red".equals(side) ? "black" : "red";
+            for (int row = 0; row < ROWS; row += 1) {
+                for (int col = 0; col < COLS; col += 1) {
+                    String piece = board[row][col];
+                    if (piece == null || !enemy.equals(pieceSide(piece))) {
+                        continue;
+                    }
+                    if (isLegalMove(board, piece, row, col, general[0], general[1])) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         private static boolean isLegalMove(String[][] board, String piece, int fromRow, int fromCol, int toRow, int toCol) {
