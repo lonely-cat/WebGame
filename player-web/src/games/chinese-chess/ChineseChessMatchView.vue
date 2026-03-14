@@ -5,31 +5,44 @@
         <div class="panel-heading">
           <div>
             <p class="kicker">Live Match</p>
-            <h2>Xiangqi match shell</h2>
+            <h2>Xiangqi board</h2>
           </div>
           <button class="ghost" @click="goToRoom">Back To Room</button>
         </div>
         <p class="copy">
-          This is the dedicated match view. The multiplayer shell, match metadata, and room feed
-          are already live; the next iteration will render the board and piece movement.
+          The board is now live: pick one of your pieces, choose a target square, and let the server
+          validate the move before both browsers update.
         </p>
         <dl class="stats">
-          <div><dt>Role</dt><dd>{{ roleLabel }}</dd></div>
-          <div><dt>Turn</dt><dd>{{ currentTurnLabel }}</dd></div>
+          <div><dt>Role</dt><dd>{{ mySide }}</dd></div>
+          <div><dt>Turn</dt><dd>{{ currentTurn }}</dd></div>
+          <div><dt>Status</dt><dd>{{ statusLabel }}</dd></div>
           <div><dt>Winner</dt><dd>{{ winner || "-" }}</dd></div>
-          <div><dt>Players</dt><dd>{{ roomPlayers.length }}</dd></div>
         </dl>
       </article>
 
       <article class="panel">
         <div class="panel-heading tight">
           <div>
-            <p class="kicker">Room Feed</p>
-            <h2>Live event stream</h2>
+            <p class="kicker">Selection</p>
+            <h2>Move guidance</h2>
+          </div>
+        </div>
+        <p class="selection-copy">{{ selectionLabel }}</p>
+        <p class="river-copy">楚河汉界</p>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading tight">
+          <div>
+            <p class="kicker">Move Feed</p>
+            <h2>Recent actions</h2>
           </div>
         </div>
         <ul class="feed">
-          <li v-for="entry in roomFeed" :key="entry.id">{{ entry.text }}</li>
+          <li v-for="entry in moveHistory.slice().reverse().slice(0, 8)" :key="`${entry.fromRow}-${entry.fromCol}-${entry.toRow}-${entry.toCol}-${entry.piece}`">
+            {{ describeMove(entry) }}
+          </li>
         </ul>
       </article>
     </template>
@@ -38,17 +51,29 @@
       <article class="panel board-panel">
         <div class="panel-heading">
           <div>
-            <p class="kicker">Board Placeholder</p>
-            <h2>Chinese Chess board UI is next</h2>
+            <p class="kicker">Board Stage</p>
+            <h2>Authoritative live board</h2>
           </div>
-          <span class="badge">{{ inMatch ? "match live" : "waiting" }}</span>
+          <span class="badge">{{ roomPlayers.length }} players</span>
         </div>
-        <div class="board-placeholder">
-          <div class="river">楚河 汉界</div>
-          <p>
-            The platform-level room flow is already running for Chinese Chess.
-            Next we will drop in the real board, pieces, legal move validation, and checkmate state.
-          </p>
+
+        <div class="board-shell">
+          <div class="river-band">楚河 汉界</div>
+          <div class="board-grid">
+            <button
+              v-for="cell in boardCells"
+              :key="`${cell.row}-${cell.col}`"
+              :data-row="cell.row"
+              :data-col="cell.col"
+              :id="cell.row === 6 && cell.col === 0 ? 'chess-origin-cell' : undefined"
+              :class="cellClasses(cell.row, cell.col)"
+              @click="clickCell(cell.row, cell.col)"
+            >
+              <span v-if="board[cell.row][cell.col]" class="piece-token">
+                {{ pieceLabel(board[cell.row][cell.col]) }}
+              </span>
+            </button>
+          </div>
         </div>
       </article>
     </template>
@@ -56,24 +81,49 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import { useRouter } from "vue-router";
 import MultiplayerTwoColumn from "../../components/multiplayer/MultiplayerTwoColumn.vue";
-import { useMultiplayerRoomSession } from "../../composables/useMultiplayerRoomSession";
+import { useChineseChessSession } from "./useChineseChessSession";
 
 const router = useRouter();
 const {
-  roomFeed,
-  roleLabel,
+  boardRows,
+  boardCols,
+  board,
+  moveHistory,
+  currentTurn,
   winner,
-  currentTurnLabel,
+  mySide,
   roomPlayers,
-  inMatch
-} = useMultiplayerRoomSession("chinese-chess", {
-  testUserPrefix: "xiangqi"
-});
+  statusLabel,
+  selectionLabel,
+  clickCell,
+  cellClasses,
+  pieceLabel
+} = useChineseChessSession();
+
+const boardCells = computed(() =>
+  Array.from({ length: boardRows * boardCols }, (_, index) => ({
+    row: Math.floor(index / boardCols),
+    col: index % boardCols
+  }))
+);
 
 function goToRoom() {
   router.push("/games/chinese-chess/room");
+}
+
+function describeMove(entry: {
+  fromRow: number;
+  fromCol: number;
+  toRow: number;
+  toCol: number;
+  piece: string;
+  captured?: string;
+}) {
+  const action = entry.captured ? `captured ${entry.captured}` : "moved";
+  return `${entry.piece} ${action} to (${entry.toRow}, ${entry.toCol})`;
 }
 </script>
 
@@ -85,10 +135,6 @@ function goToRoom() {
   box-shadow: 0 18px 40px rgba(88, 50, 16, 0.18);
   backdrop-filter: blur(8px);
   padding: 20px;
-}
-
-.board-panel {
-  overflow: hidden;
 }
 
 .panel-heading {
@@ -110,7 +156,8 @@ function goToRoom() {
   text-transform: uppercase;
 }
 
-.copy {
+.copy,
+.selection-copy {
   line-height: 1.6;
 }
 
@@ -139,13 +186,16 @@ dd {
 }
 
 button {
-  padding: 11px 16px;
   border-radius: 14px;
   border: 1px solid rgba(67, 30, 0, 0.15);
+  font: inherit;
+}
+
+.ghost {
+  padding: 11px 16px;
   color: #4a2509;
   background: rgba(255, 249, 236, 0.9);
   cursor: pointer;
-  font: inherit;
 }
 
 .badge {
@@ -161,36 +211,85 @@ button {
   background: linear-gradient(135deg, #3f1f09, #87501f);
 }
 
-.board-placeholder {
-  min-height: 520px;
-  border-radius: 24px;
-  border: 1px solid rgba(73, 41, 14, 0.12);
-  background:
-    linear-gradient(180deg, rgba(255, 249, 234, 0.96), rgba(240, 220, 185, 0.9)),
-    repeating-linear-gradient(
-      90deg,
-      transparent 0,
-      transparent 84px,
-      rgba(83, 48, 15, 0.14) 84px,
-      rgba(83, 48, 15, 0.14) 86px
-    ),
-    repeating-linear-gradient(
-      180deg,
-      transparent 0,
-      transparent 52px,
-      rgba(83, 48, 15, 0.14) 52px,
-      rgba(83, 48, 15, 0.14) 54px
-    );
-  display: grid;
-  place-items: center;
+.river-copy {
+  margin: 16px 0 0;
+  font-size: 24px;
+  letter-spacing: 0.24em;
   text-align: center;
-  padding: 32px;
+  color: #7a4718;
 }
 
-.river {
-  font-size: 38px;
-  letter-spacing: 0.3em;
-  margin-bottom: 18px;
+.board-panel {
+  overflow: hidden;
+}
+
+.board-shell {
+  position: relative;
+  padding: 22px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 205, 132, 0.28), transparent 28%),
+    linear-gradient(180deg, rgba(255, 249, 234, 0.97), rgba(238, 214, 171, 0.92));
+  border: 1px solid rgba(73, 41, 14, 0.12);
+}
+
+.river-band {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  font-size: 28px;
+  letter-spacing: 0.24em;
+  color: rgba(112, 64, 24, 0.72);
+}
+
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.cell {
+  aspect-ratio: 1;
+  min-height: 58px;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 247, 0.78), rgba(243, 224, 192, 0.94));
+  border: 1px solid rgba(95, 58, 20, 0.22);
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.cell:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(84, 48, 12, 0.12);
+}
+
+.cell.selected {
+  border-color: rgba(188, 114, 28, 0.9);
+  box-shadow: 0 0 0 3px rgba(228, 165, 80, 0.24);
+}
+
+.piece-token {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 28px;
+  font-weight: 700;
+  background: rgba(255, 250, 240, 0.92);
+  border: 2px solid rgba(105, 63, 24, 0.2);
+}
+
+.cell.red .piece-token {
+  color: #b43420;
+}
+
+.cell.black .piece-token {
+  color: #1f1f1f;
 }
 
 .feed {

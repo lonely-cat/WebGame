@@ -37,6 +37,8 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Added a timeout regression script and re-verified both Draw and Guess result paths: guessed rounds still advance correctly into the next round, and inactive rounds now end as `timeout` without player input.
 - Refined the Draw and Guess match UI with clearer round-status labels, a leader callout, and structured guess-history cards that flag the winning guess instead of dumping plain text lines.
 - Re-ran the Draw and Guess guessed-round and timeout scripts after the UI pass; both still pass, and the room screenshot remained visually stable.
+- Landed the first playable Xiangqi pass: the backend now seeds a real 10x9 board, validates turn ownership plus standard piece movement patterns, applies authoritative moves, and ends the match when a general is captured.
+- Added a dedicated Chinese Chess session/view layer on the frontend with live board rendering, click-to-select / click-to-move interaction, move feed, and shared websocket sync, then verified a dual-client red pawn move end-to-end.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
@@ -44,4 +46,5 @@ TODO:
 - Continue polishing Draw and Guess: resolve timed-out rounds on the server, improve guess history UI, and add better round-end messaging.
 - Continue polishing Draw and Guess: add richer guess history UI, clearer round-end celebration/messaging, and support auto-advancing or host-confirmed round transitions.
 - Continue polishing Draw and Guess: add a stronger round-end celebration banner, optional auto-advance/host confirmation, and richer drawer feedback while sketching.
+- Continue deepening Xiangqi rules: enforce general-facing/check constraints, add check/checkmate awareness, and grow the automated move coverage beyond the opening pawn step.
 - Add a cleaner persistent dev-start workflow for backend and frontend.

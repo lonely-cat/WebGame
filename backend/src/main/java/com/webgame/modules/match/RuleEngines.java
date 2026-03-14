@@ -189,9 +189,288 @@ public final class RuleEngines {
 
     @Component
     public static class ChineseChessRuleEngine extends AbstractRuleEngine {
+        private static final int ROWS = 10;
+        private static final int COLS = 9;
+
         @Override
         public String getGameCode() {
             return "chinese-chess";
+        }
+
+        @Override
+        public GameState initState(MatchInitContext context) {
+            Map<String, Object> data = new HashMap<>();
+            data.put("board", createInitialBoard());
+            data.put("currentTurn", "red");
+            data.put("winner", null);
+            data.put("moves", new ArrayList<Map<String, Object>>());
+            return new GameState(getGameCode(), data);
+        }
+
+        @Override
+        public ActionValidateResult validateAction(PlayerActionCommand action, GameState state) {
+            if (!"move".equals(action.actionType())) {
+                return new ActionValidateResult(false, "unsupported action type");
+            }
+            Integer fromRow = readInt(action.payload().get("fromRow"));
+            Integer fromCol = readInt(action.payload().get("fromCol"));
+            Integer toRow = readInt(action.payload().get("toRow"));
+            Integer toCol = readInt(action.payload().get("toCol"));
+            String side = String.valueOf(action.payload().getOrDefault("role", ""));
+            if (!isInsideBoard(fromRow, fromCol) || !isInsideBoard(toRow, toCol)) {
+                return new ActionValidateResult(false, "move is out of board");
+            }
+            if (fromRow.equals(toRow) && fromCol.equals(toCol)) {
+                return new ActionValidateResult(false, "source and target cannot match");
+            }
+            if (!side.equals(state.data().get("currentTurn"))) {
+                return new ActionValidateResult(false, "it is not your turn");
+            }
+            String[][] board = readChessBoard(state);
+            String piece = board[fromRow][fromCol];
+            if (piece == null) {
+                return new ActionValidateResult(false, "no piece on the source square");
+            }
+            if (!side.equals(pieceSide(piece))) {
+                return new ActionValidateResult(false, "you can only move your own pieces");
+            }
+            String target = board[toRow][toCol];
+            if (target != null && side.equals(pieceSide(target))) {
+                return new ActionValidateResult(false, "cannot capture your own piece");
+            }
+            if (!isLegalMove(board, piece, fromRow, fromCol, toRow, toCol)) {
+                return new ActionValidateResult(false, "illegal move for that piece");
+            }
+            return new ActionValidateResult(true, "accepted");
+        }
+
+        @Override
+        public GameState applyAction(PlayerActionCommand action, GameState state) {
+            Integer fromRow = readInt(action.payload().get("fromRow"));
+            Integer fromCol = readInt(action.payload().get("fromCol"));
+            Integer toRow = readInt(action.payload().get("toRow"));
+            Integer toCol = readInt(action.payload().get("toCol"));
+            String[][] board = readChessBoard(state);
+            String piece = board[fromRow][fromCol];
+            String captured = board[toRow][toCol];
+
+            board[toRow][toCol] = piece;
+            board[fromRow][fromCol] = null;
+            state.data().put("board", board);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> moves = (List<Map<String, Object>>) state.data().get("moves");
+            Map<String, Object> move = new HashMap<>();
+            move.put("fromRow", fromRow);
+            move.put("fromCol", fromCol);
+            move.put("toRow", toRow);
+            move.put("toCol", toCol);
+            move.put("piece", piece);
+            if (captured != null) {
+                move.put("captured", captured);
+            }
+            moves.add(move);
+
+            if ("general".equals(pieceKind(captured))) {
+                state.data().put("winner", pieceSide(piece));
+            } else {
+                state.data().put("currentTurn", "red".equals(pieceSide(piece)) ? "black" : "red");
+            }
+            return state;
+        }
+
+        @Override
+        public boolean isGameOver(GameState state) {
+            return state.data().get("winner") != null;
+        }
+
+        @Override
+        public MatchResult buildMatchResult(GameState state) {
+            return new MatchResult(getGameCode(), "", null, Map.of(
+                    "winnerStone", state.data().get("winner"),
+                    "currentTurn", state.data().get("currentTurn"),
+                    "moves", state.data().get("moves")
+            ));
+        }
+
+        @Override
+        public GameStateView buildStateView(GameState state, Long viewerUserId) {
+            return new GameStateView(getGameCode(), new HashMap<>(state.data()));
+        }
+
+        private static String[][] createInitialBoard() {
+            String[][] board = new String[ROWS][COLS];
+            placeBackRank(board, 0, "black");
+            placeCannons(board, 2, "black");
+            placePawns(board, 3, "black");
+            placeBackRank(board, 9, "red");
+            placeCannons(board, 7, "red");
+            placePawns(board, 6, "red");
+            return board;
+        }
+
+        private static void placeBackRank(String[][] board, int row, String side) {
+            board[row][0] = side + "-rook";
+            board[row][1] = side + "-horse";
+            board[row][2] = side + "-elephant";
+            board[row][3] = side + "-advisor";
+            board[row][4] = side + "-general";
+            board[row][5] = side + "-advisor";
+            board[row][6] = side + "-elephant";
+            board[row][7] = side + "-horse";
+            board[row][8] = side + "-rook";
+        }
+
+        private static void placeCannons(String[][] board, int row, String side) {
+            board[row][1] = side + "-cannon";
+            board[row][7] = side + "-cannon";
+        }
+
+        private static void placePawns(String[][] board, int row, String side) {
+            for (int col = 0; col < COLS; col += 2) {
+                board[row][col] = side + "-pawn";
+            }
+        }
+
+        private static boolean isInsideBoard(Integer row, Integer col) {
+            return row != null && col != null && row >= 0 && row < ROWS && col >= 0 && col < COLS;
+        }
+
+        private static String[][] readChessBoard(GameState state) {
+            return (String[][]) state.data().get("board");
+        }
+
+        private static Integer readInt(Object value) {
+            if (value instanceof Integer integer) {
+                return integer;
+            }
+            if (value instanceof Number number) {
+                return number.intValue();
+            }
+            if (value instanceof String string) {
+                return Integer.parseInt(string);
+            }
+            return null;
+        }
+
+        private static String pieceSide(String piece) {
+            if (piece == null || !piece.contains("-")) {
+                return "";
+            }
+            return piece.substring(0, piece.indexOf('-'));
+        }
+
+        private static String pieceKind(String piece) {
+            if (piece == null || !piece.contains("-")) {
+                return "";
+            }
+            return piece.substring(piece.indexOf('-') + 1);
+        }
+
+        private static boolean isLegalMove(String[][] board, String piece, int fromRow, int fromCol, int toRow, int toCol) {
+            String side = pieceSide(piece);
+            String kind = pieceKind(piece);
+            int rowDelta = toRow - fromRow;
+            int colDelta = toCol - fromCol;
+            int absRow = Math.abs(rowDelta);
+            int absCol = Math.abs(colDelta);
+            return switch (kind) {
+                case "rook" -> (rowDelta == 0 || colDelta == 0) && countBlockers(board, fromRow, fromCol, toRow, toCol) == 0;
+                case "cannon" -> isCannonMove(board, toRow, toCol, fromRow, fromCol);
+                case "horse" -> isHorseMove(board, fromRow, fromCol, toRow, toCol, absRow, absCol);
+                case "elephant" -> isElephantMove(board, side, fromRow, fromCol, toRow, toCol, absRow, absCol);
+                case "advisor" -> absRow == 1 && absCol == 1 && isInsidePalace(side, toRow, toCol);
+                case "general" -> isGeneralMove(board, side, fromRow, fromCol, toRow, toCol, absRow, absCol);
+                case "pawn" -> isPawnMove(side, fromRow, fromCol, toRow, toCol, rowDelta, colDelta);
+                default -> false;
+            };
+        }
+
+        private static boolean isCannonMove(String[][] board, int toRow, int toCol, int fromRow, int fromCol) {
+            if (toRow != fromRow && toCol != fromCol) {
+                return false;
+            }
+            int blockers = countBlockers(board, fromRow, fromCol, toRow, toCol);
+            boolean isCapture = board[toRow][toCol] != null;
+            return isCapture ? blockers == 1 : blockers == 0;
+        }
+
+        private static boolean isHorseMove(String[][] board, int fromRow, int fromCol, int toRow, int toCol,
+                                           int absRow, int absCol) {
+            if (!((absRow == 2 && absCol == 1) || (absRow == 1 && absCol == 2))) {
+                return false;
+            }
+            int legRow = fromRow + (absRow == 2 ? Integer.signum(toRow - fromRow) : 0);
+            int legCol = fromCol + (absCol == 2 ? Integer.signum(toCol - fromCol) : 0);
+            return board[legRow][legCol] == null;
+        }
+
+        private static boolean isElephantMove(String[][] board, String side, int fromRow, int fromCol, int toRow,
+                                              int toCol, int absRow, int absCol) {
+            if (absRow != 2 || absCol != 2) {
+                return false;
+            }
+            if ("red".equals(side) && toRow < 5) {
+                return false;
+            }
+            if ("black".equals(side) && toRow > 4) {
+                return false;
+            }
+            return board[(fromRow + toRow) / 2][(fromCol + toCol) / 2] == null;
+        }
+
+        private static boolean isGeneralMove(String[][] board, String side, int fromRow, int fromCol, int toRow,
+                                             int toCol, int absRow, int absCol) {
+            if (fromCol == toCol && "general".equals(pieceKind(board[toRow][toCol]))) {
+                return countBlockers(board, fromRow, fromCol, toRow, toCol) == 0;
+            }
+            return absRow + absCol == 1 && isInsidePalace(side, toRow, toCol);
+        }
+
+        private static boolean isPawnMove(String side, int fromRow, int fromCol, int toRow, int toCol,
+                                          int rowDelta, int colDelta) {
+            if (Math.abs(rowDelta) + Math.abs(colDelta) != 1) {
+                return false;
+            }
+            if ("red".equals(side)) {
+                if (rowDelta > 0) {
+                    return false;
+                }
+                if (fromRow <= 4) {
+                    return rowDelta == 0 || rowDelta == -1;
+                }
+                return rowDelta == -1;
+            }
+            if (rowDelta < 0) {
+                return false;
+            }
+            if (fromRow >= 5) {
+                return rowDelta == 0 || rowDelta == 1;
+            }
+            return rowDelta == 1;
+        }
+
+        private static boolean isInsidePalace(String side, int row, int col) {
+            if (col < 3 || col > 5) {
+                return false;
+            }
+            return "red".equals(side) ? row >= 7 && row <= 9 : row >= 0 && row <= 2;
+        }
+
+        private static int countBlockers(String[][] board, int fromRow, int fromCol, int toRow, int toCol) {
+            int rowStep = Integer.compare(toRow, fromRow);
+            int colStep = Integer.compare(toCol, fromCol);
+            int row = fromRow + rowStep;
+            int col = fromCol + colStep;
+            int blockers = 0;
+            while (row != toRow || col != toCol) {
+                if (board[row][col] != null) {
+                    blockers += 1;
+                }
+                row += rowStep;
+                col += colStep;
+            }
+            return blockers;
         }
     }
 

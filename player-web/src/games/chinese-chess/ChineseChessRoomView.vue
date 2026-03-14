@@ -81,13 +81,13 @@
         <div class="panel-heading tight">
           <div>
             <p class="kicker">Prototype Scope</p>
-            <h2>Room flow first, rules next</h2>
+            <h2>Room flow and live board are ready</h2>
           </div>
         </div>
         <p class="copy">
           Chinese Chess is now on the same multiplayer rails as Gomoku: login, room staging,
-          ready checks, and match entry are all live. The actual piece rules and board state will
-          be the next step.
+          ready checks, match entry, the initial board, and first-pass legal move validation are all live.
+          Next we can keep tightening Xiangqi-specific rules like check, flying generals, and endgame flow.
         </p>
         <dl class="stats">
           <div><dt>User</dt><dd>{{ currentUser?.username ?? "-" }}</dd></div>
@@ -116,7 +116,7 @@
 import { watch } from "vue";
 import { useRouter } from "vue-router";
 import MultiplayerTwoColumn from "../../components/multiplayer/MultiplayerTwoColumn.vue";
-import { useMultiplayerRoomSession } from "../../composables/useMultiplayerRoomSession";
+import { useChineseChessSession } from "./useChineseChessSession";
 
 const router = useRouter();
 const {
@@ -144,9 +144,7 @@ const {
   playerNameBySeat,
   seatStatus,
   seatTone
-} = useMultiplayerRoomSession("chinese-chess", {
-  testUserPrefix: "xiangqi"
-});
+} = useChineseChessSession();
 
 watch(inMatch, (value) => {
   if (value) {

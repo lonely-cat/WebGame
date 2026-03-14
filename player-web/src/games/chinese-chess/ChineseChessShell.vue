@@ -2,7 +2,7 @@
   <MultiplayerShell
     eyebrow="Board Game Room Flow"
     title="Chinese Chess is now plugged into the multiplayer room framework."
-    subtitle="The room and match flow are live first so we can stabilize the platform shell before landing full Xiangqi rules and board interaction."
+    subtitle="The room flow, live board, and first-pass move validation are all in place, giving Xiangqi the same multiplayer foundation as the rest of the platform."
     :phase-title="phaseTitle"
     :phase-description="phaseDescription"
     :phase-class="phaseClass"
@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { RouterView } from "vue-router";
 import MultiplayerShell from "../../components/multiplayer/MultiplayerShell.vue";
-import { useMultiplayerRoomSession } from "../../composables/useMultiplayerRoomSession";
+import { useChineseChessSession } from "./useChineseChessSession";
 
 const {
   phaseTitle,
@@ -28,7 +28,5 @@ const {
   matchCode,
   roleLabel,
   socketConnected
-} = useMultiplayerRoomSession("chinese-chess", {
-  testUserPrefix: "xiangqi"
-});
+} = useChineseChessSession();
 </script>
