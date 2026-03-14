@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: webgame-backend
+
+server:
+  port: 8080
+
+webgame:
+  jwt:
+    issuer: webgame
+    access-token-expire-seconds: 7200
+    refresh-token-expire-seconds: 604800
+    secret: change-me-in-local-env
