@@ -14,8 +14,10 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Replaced the placeholder player entry points with a proper landing page and lobby grid, so new games can be surfaced through a stable front-door instead of direct prototype links.
 - Restructured the Gomoku page into a clearer room-to-match flow with explicit login, room staging, roster, live board, and feed sections while keeping existing multiplayer test selectors stable.
 - Re-ran the frontend build plus the Playwright Gomoku checks after the UI refactor; dual-client move sync and illegal consecutive move rejection still pass.
+- Split Gomoku into a dedicated shell with separate `/room` and `/match` routes, backed by a shared session composable so socket state and match state survive route changes.
+- Verified the new route flow with build output, Playwright screenshots, dual-client sync, and the illegal-move rejection script.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
-- Split Gomoku into dedicated room and match routes/components so the same shell can be reused by Chinese Chess and Draw and Guess.
+- Extract the shared room shell and session primitives so Chinese Chess and Draw and Guess can plug into the same multiplayer route pattern.
 - Add a cleaner persistent dev-start workflow for backend and frontend.
