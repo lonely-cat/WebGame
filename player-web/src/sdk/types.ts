@@ -1,6 +1,9 @@
 export interface GameMeta {
   gameCode: string;
   gameName: string;
+  blurb: string;
+  genre?: string;
+  status?: "prototype" | "playable" | "planned";
   mode: "vue" | "static";
   loader: () => Promise<unknown> | unknown;
   multiplayer: boolean;
