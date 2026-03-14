@@ -111,6 +111,7 @@ public class MatchServiceImpl implements MatchService {
         GameState nextState = ruleEngine.applyAction(command, session.state());
         GameStateView view = ruleEngine.buildStateView(nextState, null);
         snapshots.put(session.matchId(), buildSnapshot(session, view));
+        Map<Long, String> playerRoles = resolvePlayerRoles(nextState, session);
 
         MatchResult result = null;
         if (ruleEngine.isGameOver(nextState)) {
@@ -122,7 +123,7 @@ public class MatchServiceImpl implements MatchService {
                 session.matchCode(),
                 normalizedPayload,
                 view.visibleState(),
-                session.playerStones(),
+                playerRoles,
                 result == null ? null : result.summary()
         );
     }
@@ -175,6 +176,22 @@ public class MatchServiceImpl implements MatchService {
             state.data().put("currentTurn", "red");
             state.data().put("playerRoles", new HashMap<>(playerRoles));
         }
+    }
+
+    private Map<Long, String> resolvePlayerRoles(GameState state, ActiveMatchSession session) {
+        Object playerRoles = state.data().get("playerRoles");
+        if (playerRoles instanceof Map<?, ?> rawMap) {
+            Map<Long, String> typed = new HashMap<>();
+            for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+                if (entry.getKey() instanceof Number number && entry.getValue() != null) {
+                    typed.put(number.longValue(), String.valueOf(entry.getValue()));
+                }
+            }
+            if (!typed.isEmpty()) {
+                return typed;
+            }
+        }
+        return session.playerStones();
     }
 
     private GameRuleEngine getRuleEngine(String gameCode) {

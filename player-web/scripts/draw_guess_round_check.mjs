@@ -59,14 +59,22 @@ async function main() {
     await pageB.click("text=Submit Guess");
     await pageB.waitForTimeout(1200);
 
-    const stateA = JSON.parse(await pageA.evaluate(() => window.render_game_to_text()));
-    const stateB = JSON.parse(await pageB.evaluate(() => window.render_game_to_text()));
+    const finishedA = JSON.parse(await pageA.evaluate(() => window.render_game_to_text()));
+    const finishedB = JSON.parse(await pageB.evaluate(() => window.render_game_to_text()));
+
+    await pageA.click("text=Next Round");
+    await pageA.waitForTimeout(1200);
+
+    const nextRoundA = JSON.parse(await pageA.evaluate(() => window.render_game_to_text()));
+    const nextRoundB = JSON.parse(await pageB.evaluate(() => window.render_game_to_text()));
 
     console.log(JSON.stringify({
       roomCode,
       promptText,
-      pageAState: stateA,
-      pageBState: stateB
+      finishedA,
+      finishedB,
+      nextRoundA,
+      nextRoundB
     }, null, 2));
   } finally {
     await browser.close();

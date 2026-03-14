@@ -15,10 +15,25 @@
         </p>
         <dl class="stats">
           <div><dt>Role</dt><dd>{{ roleLabel }}</dd></div>
-          <div><dt>Turn</dt><dd>{{ currentTurnLabel }}</dd></div>
+          <div><dt>Round</dt><dd>{{ roundNo }} / {{ maxRounds }}</dd></div>
+          <div><dt>Timer</dt><dd>{{ secondsRemaining }}s</dd></div>
           <div><dt>Winner</dt><dd>{{ winner || "-" }}</dd></div>
-          <div><dt>Players</dt><dd>{{ roomPlayers.length }}</dd></div>
         </dl>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading tight">
+          <div>
+            <p class="kicker">Scoreboard</p>
+            <h2>Round totals</h2>
+          </div>
+        </div>
+        <ul class="score-list">
+          <li v-for="entry in sortedScores" :key="entry.userId">
+            <span>User #{{ entry.userId }}</span>
+            <strong>{{ entry.score }}</strong>
+          </li>
+        </ul>
       </article>
 
       <article class="panel">
@@ -41,7 +56,10 @@
             <p class="kicker">Canvas Stage</p>
             <h2>Live sketch round</h2>
           </div>
-          <span class="badge">{{ inMatch ? "match live" : "waiting" }}</span>
+          <div class="actions">
+            <span class="badge">{{ inMatch ? roundPhase : "waiting" }}</span>
+            <button v-if="canAdvanceRound" class="ghost next-btn" @click="startNextRound">Next Round</button>
+          </div>
         </div>
         <div class="canvas-placeholder">
           <div class="top-strip">
@@ -62,11 +80,11 @@
           <div class="guess-row">
             <input
               v-model="guessInput"
-              :disabled="isDrawer || !inMatch"
+              :disabled="isDrawer || !inMatch || roundPhase !== 'drawing'"
               placeholder="Type a guess and press submit"
               @keydown.enter.prevent="submitGuess"
             />
-            <button :disabled="isDrawer || !inMatch" @click="submitGuess">Submit Guess</button>
+            <button :disabled="isDrawer || !inMatch || roundPhase !== 'drawing'" @click="submitGuess">Submit Guess</button>
           </div>
           <ul class="guess-feed">
             <li v-for="entry in guesses.slice().reverse()" :key="`${entry.userId}-${entry.guess}-${entryIndex(entry)}`">
@@ -90,7 +108,6 @@ const {
   roomFeed,
   roleLabel,
   winner,
-  currentTurnLabel,
   roomPlayers,
   inMatch,
   strokes,
@@ -101,7 +118,14 @@ const {
   guesses,
   sendStroke,
   submitGuess,
-  playerNameBySeat
+  playerNameBySeat,
+  roundNo,
+  maxRounds,
+  roundPhase,
+  secondsRemaining,
+  sortedScores,
+  canAdvanceRound,
+  startNextRound
 } = useDrawGuessSession();
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -164,7 +188,7 @@ function pointFromEvent(event: MouseEvent) {
 }
 
 function beginStroke(event: MouseEvent) {
-  if (!isDrawer.value || !inMatch.value) return;
+  if (!isDrawer.value || !inMatch.value || roundPhase.value !== "drawing") return;
   const point = pointFromEvent(event);
   if (!point) return;
   drawing.value = true;
@@ -207,6 +231,11 @@ onMounted(() => {
 watch(strokes, () => {
   drawScene();
 }, { deep: true, immediate: true });
+
+watch(roundNo, () => {
+  draftPoints.value = [];
+  drawScene();
+});
 </script>
 
 <style scoped>
@@ -249,10 +278,25 @@ watch(strokes, () => {
   margin: 14px 0 0;
 }
 
-.stats div {
+.stats div,
+.score-list li {
   padding: 12px;
   border-radius: 16px;
   background: rgba(255, 253, 245, 0.78);
+}
+
+.score-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.score-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 dt {
@@ -280,6 +324,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .badge,
 .word-chip,
 .drawer-chip {
@@ -302,6 +351,13 @@ button {
 .drawer-chip {
   color: #4a2509;
   background: rgba(255, 249, 236, 0.92);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .canvas-placeholder {

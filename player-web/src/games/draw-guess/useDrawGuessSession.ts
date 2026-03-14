@@ -24,6 +24,18 @@ const prompt = ref("");
 const promptMask = ref("");
 const drawerUserId = ref<number | null>(null);
 const guessInput = ref("");
+const roundNo = ref(1);
+const maxRounds = ref(3);
+const scores = ref<Record<string, number>>({});
+const roundPhase = ref("drawing");
+const roundEndsAt = ref<string | null>(null);
+const nowTick = ref(Date.now());
+
+if (!(window as any).__draw_guess_tick__) {
+  (window as any).__draw_guess_tick__ = window.setInterval(() => {
+    nowTick.value = Date.now();
+  }, 1000);
+}
 
 const roomSession = useMultiplayerRoomSession("draw-guess", {
   testUserPrefix: "drawguess",
@@ -32,6 +44,23 @@ const roomSession = useMultiplayerRoomSession("draw-guess", {
 
 const isDrawer = computed(() => roomSession.currentUser.value?.userId === drawerUserId.value);
 const displayPrompt = computed(() => isDrawer.value ? prompt.value || "..." : promptMask.value || "...");
+const secondsRemaining = computed(() => {
+  if (!roundEndsAt.value || roundPhase.value !== "drawing") {
+    return 0;
+  }
+  const remainingMs = new Date(roundEndsAt.value).getTime() - nowTick.value;
+  return Math.max(0, Math.ceil(remainingMs / 1000));
+});
+const sortedScores = computed(() =>
+  Object.entries(scores.value)
+    .map(([userId, score]) => ({ userId: Number(userId), score }))
+    .sort((left, right) => right.score - left.score)
+);
+const canAdvanceRound = computed(() =>
+  roomSession.inMatch.value &&
+  roundPhase.value === "round_finished" &&
+  roundNo.value < maxRounds.value
+);
 
 function useDrawGuessSession() {
   syncWindowHelpers();
@@ -42,10 +71,19 @@ function useDrawGuessSession() {
     promptMask,
     drawerUserId,
     guessInput,
+    roundNo,
+    maxRounds,
+    scores,
+    roundPhase,
+    roundEndsAt,
+    secondsRemaining,
+    sortedScores,
+    canAdvanceRound,
     isDrawer,
     displayPrompt,
     sendStroke,
     submitGuess,
+    startNextRound,
     syncWindowHelpers,
     ...roomSession
   };
@@ -100,11 +138,19 @@ function handleDrawGuessMessage(message: ServerWsEnvelope, helpers: {
       currentTurn?: string;
     }>>(message.payload);
     if (payload) {
+      if (payload.playerStones && helpers.currentUser.value) {
+        helpers.roleLabel.value = payload.playerStones[String(helpers.currentUser.value.userId)] ?? helpers.roleLabel.value;
+      }
       prompt.value = String(payload.state.secretWord ?? "");
       promptMask.value = String(payload.state.promptMask ?? "");
       drawerUserId.value = payload.state.drawerUserId ?? null;
       strokes.value = (payload.state.strokes ?? []).map((entry) => entry.stroke);
       guesses.value = payload.state.guesses ?? [];
+      roundNo.value = Number(payload.state.roundNo ?? 1);
+      maxRounds.value = Number(payload.state.maxRounds ?? 3);
+      roundPhase.value = String(payload.state.phase ?? "drawing");
+      roundEndsAt.value = payload.state.roundEndsAt ? String(payload.state.roundEndsAt) : null;
+      scores.value = (payload.state.scores as Record<string, number> | undefined) ?? {};
       helpers.currentTurnLabel.value = String(payload.state.currentTurn ?? "live");
       helpers.winner.value = payload.state.winnerUserId ? `User #${payload.state.winnerUserId}` : "";
       syncWindowHelpers();
@@ -154,6 +200,19 @@ function submitGuess() {
   guessInput.value = "";
 }
 
+function startNextRound() {
+  const message: ClientWsMessage<{ type: "next_round" }> = {
+    type: wsMessageTypes.playerAction,
+    gameCode: "draw-guess",
+    roomCode: roomSession.activeRoomCode.value,
+    payload: {
+      type: "next_round"
+    },
+    timestamp: new Date().toISOString()
+  };
+  roomSession.sendClientMessage(message);
+}
+
 function syncWindowHelpers() {
   (window as any).render_game_to_text = () => JSON.stringify({
     mode: roomSession.inMatch.value ? "playing" : "room",
@@ -163,8 +222,13 @@ function syncWindowHelpers() {
     role: roomSession.roleLabel.value,
     prompt: displayPrompt.value,
     drawerUserId: drawerUserId.value,
+    roundNo: roundNo.value,
+    maxRounds: maxRounds.value,
+    roundPhase: roundPhase.value,
+    secondsRemaining: secondsRemaining.value,
     strokes: strokes.value.length,
     guesses: guesses.value,
+    scores: scores.value,
     winner: roomSession.winner.value || null
   });
   (window as any).advanceTime = () => Promise.resolve();

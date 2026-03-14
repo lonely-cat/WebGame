@@ -213,6 +213,8 @@ public final class RuleEngines {
     @Component
     public static class DrawGuessRuleEngine extends AbstractRuleEngine {
         private static final List<String> WORDS = List.of("cat", "house", "tree", "rocket", "apple");
+        private static final int MAX_ROUNDS = 3;
+        private static final int ROUND_DURATION_SECONDS = 45;
 
         @Override
         public String getGameCode() {
@@ -222,8 +224,10 @@ public final class RuleEngines {
         @Override
         public GameState initState(MatchInitContext context) {
             Map<String, Object> data = new HashMap<>();
-            String word = WORDS.get(Math.floorMod(context.roomId().intValue(), WORDS.size()));
-            data.put("roundNo", 1);
+            int roundNo = 1;
+            String word = pickWord(context.roomId().intValue(), roundNo);
+            data.put("roundNo", roundNo);
+            data.put("maxRounds", MAX_ROUNDS);
             data.put("phase", "drawing");
             data.put("secretWord", word);
             data.put("promptMask", "_".repeat(word.length()));
@@ -232,25 +236,40 @@ public final class RuleEngines {
             data.put("winnerUserId", null);
             data.put("currentTurn", "drawing");
             data.put("drawerUserId", null);
+            data.put("scores", new HashMap<Long, Integer>());
+            data.put("roundEndsAt", java.time.Instant.now().plusSeconds(ROUND_DURATION_SECONDS).toString());
             return new GameState(getGameCode(), data);
         }
 
         @Override
         public ActionValidateResult validateAction(PlayerActionCommand action, GameState state) {
             String role = String.valueOf(action.payload().getOrDefault("role", ""));
+            String phase = String.valueOf(state.data().getOrDefault("phase", "drawing"));
             if ("draw_stroke".equals(action.actionType())) {
+                if (!"drawing".equals(phase)) {
+                    return new ActionValidateResult(false, "round is not active");
+                }
                 if (!"drawer".equals(role)) {
                     return new ActionValidateResult(false, "only the drawer can draw");
                 }
                 return new ActionValidateResult(true, "accepted");
             }
             if ("submit_guess".equals(action.actionType())) {
+                if (!"drawing".equals(phase)) {
+                    return new ActionValidateResult(false, "round is not active");
+                }
                 if ("drawer".equals(role)) {
                     return new ActionValidateResult(false, "drawer cannot submit guesses");
                 }
                 String guess = String.valueOf(action.payload().getOrDefault("guess", "")).trim();
                 if (guess.isEmpty()) {
                     return new ActionValidateResult(false, "guess cannot be empty");
+                }
+                return new ActionValidateResult(true, "accepted");
+            }
+            if ("next_round".equals(action.actionType())) {
+                if (!"round_finished".equals(phase)) {
+                    return new ActionValidateResult(false, "round is not ready to advance");
                 }
                 return new ActionValidateResult(true, "accepted");
             }
@@ -278,17 +297,28 @@ public final class RuleEngines {
                 )));
                 String secretWord = String.valueOf(state.data().get("secretWord"));
                 if (secretWord.equalsIgnoreCase(guess)) {
-                    state.data().put("phase", "finished");
+                    state.data().put("phase", "round_finished");
                     state.data().put("winnerUserId", action.userId());
-                    state.data().put("currentTurn", "finished");
+                    state.data().put("currentTurn", "round_finished");
+                    awardScore(state, action.userId(), 10);
+                    Long drawerUserId = state.data().get("drawerUserId") instanceof Number number ? number.longValue() : null;
+                    if (drawerUserId != null) {
+                        awardScore(state, drawerUserId, 4);
+                    }
                 }
+                return state;
+            }
+            if ("next_round".equals(action.actionType())) {
+                advanceRound(state);
             }
             return state;
         }
 
         @Override
         public boolean isGameOver(GameState state) {
-            return state.data().get("winnerUserId") != null;
+            int roundNo = ((Number) state.data().getOrDefault("roundNo", 1)).intValue();
+            int maxRounds = ((Number) state.data().getOrDefault("maxRounds", MAX_ROUNDS)).intValue();
+            return "round_finished".equals(state.data().get("phase")) && roundNo >= maxRounds;
         }
 
         @Override
@@ -297,7 +327,9 @@ public final class RuleEngines {
             return new MatchResult(getGameCode(), "", winnerUserId, Map.of(
                     "winnerUserId", winnerUserId,
                     "secretWord", state.data().get("secretWord"),
-                    "guesses", state.data().get("guesses")
+                    "guesses", state.data().get("guesses"),
+                    "scores", state.data().get("scores"),
+                    "roundNo", state.data().get("roundNo")
             ));
         }
 
@@ -306,10 +338,65 @@ public final class RuleEngines {
             Map<String, Object> visible = new HashMap<>(state.data());
             Long drawerUserId = state.data().get("drawerUserId") instanceof Number number ? number.longValue() : null;
             boolean isDrawer = viewerUserId != null && viewerUserId.equals(drawerUserId);
-            if (!isDrawer) {
+            if (!isDrawer && "drawing".equals(state.data().get("phase"))) {
                 visible.remove("secretWord");
             }
             return new GameStateView(getGameCode(), visible);
+        }
+
+        private static void advanceRound(GameState state) {
+            int currentRound = ((Number) state.data().getOrDefault("roundNo", 1)).intValue();
+            int nextRound = currentRound + 1;
+            @SuppressWarnings("unchecked")
+            Map<Long, String> playerRoles = (Map<Long, String>) state.data().get("playerRoles");
+            if (playerRoles != null && !playerRoles.isEmpty()) {
+                rotateRoles(playerRoles);
+                Long drawerUserId = playerRoles.entrySet().stream()
+                        .filter(entry -> "drawer".equals(entry.getValue()))
+                        .map(Map.Entry::getKey)
+                        .findFirst()
+                        .orElse(null);
+                state.data().put("drawerUserId", drawerUserId);
+            }
+            String nextWord = pickWord(currentRound, nextRound);
+            state.data().put("roundNo", nextRound);
+            state.data().put("phase", "drawing");
+            state.data().put("secretWord", nextWord);
+            state.data().put("promptMask", "_".repeat(nextWord.length()));
+            state.data().put("strokes", new ArrayList<Map<String, Object>>());
+            state.data().put("guesses", new ArrayList<Map<String, Object>>());
+            state.data().put("winnerUserId", null);
+            state.data().put("currentTurn", "drawing");
+            state.data().put("roundEndsAt", java.time.Instant.now().plusSeconds(ROUND_DURATION_SECONDS).toString());
+        }
+
+        private static void rotateRoles(Map<Long, String> playerRoles) {
+            Long currentDrawer = playerRoles.entrySet().stream()
+                    .filter(entry -> "drawer".equals(entry.getValue()))
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElse(null);
+            Long currentGuesser = playerRoles.entrySet().stream()
+                    .filter(entry -> "guesser".equals(entry.getValue()))
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElse(null);
+            if (currentDrawer != null) {
+                playerRoles.put(currentDrawer, "guesser");
+            }
+            if (currentGuesser != null) {
+                playerRoles.put(currentGuesser, "drawer");
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        private static void awardScore(GameState state, Long userId, int amount) {
+            Map<Long, Integer> scores = (Map<Long, Integer>) state.data().get("scores");
+            scores.put(userId, scores.getOrDefault(userId, 0) + amount);
+        }
+
+        private static String pickWord(int seed, int roundNo) {
+            return WORDS.get(Math.floorMod(seed + roundNo - 1, WORDS.size()));
         }
     }
 }
