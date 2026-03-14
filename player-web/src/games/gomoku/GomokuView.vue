@@ -104,6 +104,7 @@ type WsEnvelope = {
   type: string;
   gameCode?: string;
   roomCode?: string;
+  matchCode?: string;
   payload?: string;
 };
 
@@ -141,6 +142,7 @@ const currentTurn = ref<Exclude<Stone, null>>("black");
 const winner = ref("");
 const roomPlayers = ref<Array<{ userId: number; readyStatus: number; seatNo: number }>>([]);
 const animationCounter = ref(0);
+const matchCode = ref("");
 
 const blackPlayerName = computed(() => roomPlayers.value[0]?.userId ? `User #${roomPlayers.value[0].userId}` : "Seat 1");
 const whitePlayerName = computed(() => roomPlayers.value[1]?.userId ? `User #${roomPlayers.value[1].userId}` : "Seat 2");
@@ -316,7 +318,6 @@ function handleCanvasClick(event: MouseEvent) {
 
 function sendMove(row: number, col: number, stone: Exclude<Stone, null>) {
   const payload: PlayerActionPayload = { type: "move", row, col, stone };
-  applyMove(row, col, stone);
   socketClient.send({
     type: "PLAYER_ACTION",
     gameCode: "gomoku",
@@ -338,6 +339,25 @@ function applyMove(row: number, col: number, stone: Exclude<Stone, null>) {
   } else {
     currentTurn.value = stone === "black" ? "white" : "black";
   }
+  renderBoard();
+  syncWindowHelpers();
+}
+
+function applyServerState(serverState: {
+  currentTurn?: Exclude<Stone, null>;
+  winner?: string | null;
+  moves?: Array<{ row: number; col: number; stone: Exclude<Stone, null> }>;
+}) {
+  resetBoard();
+  const moves = serverState.moves ?? [];
+  for (const move of moves) {
+    if (!board.value[move.row][move.col]) {
+      board.value[move.row][move.col] = move.stone;
+      moveHistory.value.push(move);
+    }
+  }
+  currentTurn.value = serverState.currentTurn ?? currentTurn.value;
+  winner.value = serverState.winner ?? "";
   renderBoard();
   syncWindowHelpers();
 }
@@ -445,8 +465,28 @@ function handleSocketMessage(event: MessageEvent) {
   }
 
   if (parsed.type === "MATCH_START") {
+    if (parsed.matchCode) {
+      matchCode.value = parsed.matchCode;
+    }
     resetBoard();
     pushFeed("Match started.");
+    return;
+  }
+
+  if (parsed.type === "GAME_STATE_SYNC" && parsed.payload) {
+    if (parsed.matchCode) {
+      matchCode.value = parsed.matchCode;
+    }
+    applyServerState(JSON.parse(parsed.payload));
+    return;
+  }
+
+  if (parsed.type === "MATCH_END" && parsed.payload) {
+    const result = JSON.parse(parsed.payload) as { winnerStone?: string | null };
+    winner.value = result.winnerStone ?? winner.value;
+    pushFeed(`Match finished. Winner: ${winner.value || "n/a"}`);
+    renderBoard();
+    syncWindowHelpers();
     return;
   }
 
@@ -480,6 +520,7 @@ function syncWindowHelpers() {
     mode: winner.value ? "finished" : "playing",
     note: "origin is top-left, rows grow downward, cols grow rightward",
     roomCode: activeRoomCode.value || null,
+    matchCode: matchCode.value || null,
     socketConnected: socketConnected.value,
     roomPlayers: roomPlayers.value,
     turn: currentTurn.value,

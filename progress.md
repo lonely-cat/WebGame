@@ -10,8 +10,9 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Verified backend startup and HTTP flow: login, list games, query assets, create room.
 - Built the first playable Gomoku page with room controls, canvas rendering, `render_game_to_text`, and optimistic move placement.
 - Verified Gomoku in Playwright twice: single-client room flow and dual-client websocket sync, with both clients reflecting the same move state.
+- Moved Gomoku turn and move validation to the backend rule engine, and updated the frontend to wait for server-approved state sync before rendering moves.
 
 TODO:
-- Add server-side Gomoku rule validation so move legality is enforced on the backend.
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
+- Add explicit match metadata sync so `matchCode` and player-side stone assignment are visible in the client state.
 - Add a cleaner persistent dev-start workflow for backend and frontend.
