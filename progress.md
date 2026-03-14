@@ -18,6 +18,8 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Verified the new route flow with build output, Playwright screenshots, dual-client sync, and the illegal-move rejection script.
 - Added a shared frontend websocket protocol module for room, match-start, state-sync, action, and error payloads so game sessions can stop hand-rolling message parsing.
 - Refactored the Gomoku session composable to consume those shared protocol types and helpers, then re-verified the room flow and multiplayer sync.
+- Extracted reusable multiplayer shell and two-column layout components, then rewired Gomoku to use them so future games can inherit the same room and match framing.
+- Rebuilt and reran the Gomoku multiplayer regression after the shared UI extraction; screenshots and dual-client sync remain healthy.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.

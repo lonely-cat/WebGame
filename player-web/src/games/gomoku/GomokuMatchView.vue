@@ -1,6 +1,6 @@
 <template>
-  <section class="workspace">
-    <aside class="sidebar">
+  <MultiplayerTwoColumn variant="match">
+    <template #sidebar>
       <article class="panel">
         <div class="panel-heading">
           <div>
@@ -29,9 +29,9 @@
           <li v-for="entry in roomFeed" :key="entry.id">{{ entry.text }}</li>
         </ul>
       </article>
-    </aside>
+    </template>
 
-    <main class="main-stage">
+    <template #main>
       <article class="panel board-panel">
         <div class="panel-heading">
           <div>
@@ -56,13 +56,14 @@
           <span v-if="winner">Winner: {{ winner }}</span>
         </div>
       </article>
-    </main>
-  </section>
+    </template>
+  </MultiplayerTwoColumn>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import MultiplayerTwoColumn from "../../components/multiplayer/MultiplayerTwoColumn.vue";
 import { useGomokuSession } from "./useGomokuSession";
 
 const router = useRouter();
@@ -110,19 +111,6 @@ watch([moveHistory, board, inMatch, winner], () => {
 </script>
 
 <style scoped>
-.workspace {
-  display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 24px;
-  align-items: start;
-}
-
-.sidebar,
-.main-stage {
-  display: grid;
-  gap: 18px;
-}
-
 .panel {
   border: 1px solid rgba(72, 38, 10, 0.18);
   border-radius: 24px;
@@ -255,11 +243,5 @@ canvas {
   margin: 0;
   padding-left: 18px;
   line-height: 1.65;
-}
-
-@media (max-width: 1080px) {
-  .workspace {
-    grid-template-columns: 1fr;
-  }
 }
 </style>
