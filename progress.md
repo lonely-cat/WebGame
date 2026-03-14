@@ -26,9 +26,11 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Extended the shared room session with game-specific websocket hooks and generic client-message sending so platform state can be reused without blocking game-specific action handling.
 - Moved Gomoku onto that shared room session path for login/build room/join/start plumbing while keeping move application, board rendering, and server-state sync inside the Gomoku layer.
 - Re-ran Gomoku multiplayer sync, Gomoku illegal-move rejection, and the Chinese Chess room-to-match check after the refactor; all three still pass.
+- Added Draw and Guess shell, room, and match routes on top of the shared multiplayer room session so a third game now uses the same platform room flow.
+- Added a dual-client Draw and Guess room-check script and verified that both players can join, ready up, start, and transition into the match route together.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
 - Continue shrinking the remaining Gomoku-specific session code so only pure board/rule behavior stays in the game folder.
-- Plug Draw and Guess into the shared multiplayer shell after the generic room flow is stable.
+- Turn Draw and Guess from a shell into a real party game: prompt assignment, drawer rotation, stroke sync, guess input, and timed round scoring.
 - Add a cleaner persistent dev-start workflow for backend and frontend.
