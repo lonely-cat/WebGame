@@ -6,6 +6,7 @@ import com.webgame.modules.match.MatchModels.GameStateView;
 import com.webgame.modules.match.MatchModels.MatchInitContext;
 import com.webgame.modules.match.MatchModels.MatchResult;
 import com.webgame.modules.match.MatchModels.PlayerActionCommand;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.HashMap;
@@ -237,7 +238,8 @@ public final class RuleEngines {
             data.put("currentTurn", "drawing");
             data.put("drawerUserId", null);
             data.put("scores", new HashMap<Long, Integer>());
-            data.put("roundEndsAt", java.time.Instant.now().plusSeconds(ROUND_DURATION_SECONDS).toString());
+            data.put("roundEndsAt", Instant.now().plusSeconds(ROUND_DURATION_SECONDS).toString());
+            data.put("roundEndReason", null);
             return new GameState(getGameCode(), data);
         }
 
@@ -300,6 +302,7 @@ public final class RuleEngines {
                     state.data().put("phase", "round_finished");
                     state.data().put("winnerUserId", action.userId());
                     state.data().put("currentTurn", "round_finished");
+                    state.data().put("roundEndReason", "guessed");
                     awardScore(state, action.userId(), 10);
                     Long drawerUserId = state.data().get("drawerUserId") instanceof Number number ? number.longValue() : null;
                     if (drawerUserId != null) {
@@ -329,8 +332,29 @@ public final class RuleEngines {
                     "secretWord", state.data().get("secretWord"),
                     "guesses", state.data().get("guesses"),
                     "scores", state.data().get("scores"),
-                    "roundNo", state.data().get("roundNo")
+                    "roundNo", state.data().get("roundNo"),
+                    "roundEndReason", state.data().get("roundEndReason")
             ));
+        }
+
+        @Override
+        public GameState reconcileState(GameState state) {
+            String phase = String.valueOf(state.data().getOrDefault("phase", "drawing"));
+            if (!"drawing".equals(phase)) {
+                return state;
+            }
+            Object rawRoundEndsAt = state.data().get("roundEndsAt");
+            if (!(rawRoundEndsAt instanceof String roundEndsAt)) {
+                return state;
+            }
+            if (Instant.now().isBefore(Instant.parse(roundEndsAt))) {
+                return state;
+            }
+            state.data().put("phase", "round_finished");
+            state.data().put("currentTurn", "round_finished");
+            state.data().put("winnerUserId", null);
+            state.data().put("roundEndReason", "timeout");
+            return state;
         }
 
         @Override
@@ -367,7 +391,8 @@ public final class RuleEngines {
             state.data().put("guesses", new ArrayList<Map<String, Object>>());
             state.data().put("winnerUserId", null);
             state.data().put("currentTurn", "drawing");
-            state.data().put("roundEndsAt", java.time.Instant.now().plusSeconds(ROUND_DURATION_SECONDS).toString());
+            state.data().put("roundEndsAt", Instant.now().plusSeconds(ROUND_DURATION_SECONDS).toString());
+            state.data().put("roundEndReason", null);
         }
 
         private static void rotateRoles(Map<Long, String> playerRoles) {

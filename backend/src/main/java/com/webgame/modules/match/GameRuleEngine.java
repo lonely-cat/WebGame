@@ -21,4 +21,8 @@ public interface GameRuleEngine {
     MatchResult buildMatchResult(GameState state);
 
     GameStateView buildStateView(GameState state, Long viewerUserId);
+
+    default GameState reconcileState(GameState state) {
+        return state;
+    }
 }

@@ -66,6 +66,9 @@
             <div class="word-chip">Prompt: {{ displayPrompt }}</div>
             <div class="drawer-chip">Drawer: {{ drawerLabel }}</div>
           </div>
+          <div class="round-summary" :class="roundPhase">
+            {{ roundSummary }}
+          </div>
           <div class="canvas-surface">
             <canvas
               ref="canvasRef"
@@ -125,7 +128,8 @@ const {
   secondsRemaining,
   sortedScores,
   canAdvanceRound,
-  startNextRound
+  startNextRound,
+  roundSummary
 } = useDrawGuessSession();
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -382,6 +386,20 @@ button:disabled {
     radial-gradient(circle at top left, rgba(255, 191, 122, 0.22), transparent 28%);
   overflow: hidden;
   border: 1px solid rgba(73, 41, 14, 0.12);
+}
+
+.round-summary {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 252, 245, 0.92);
+  border: 1px solid rgba(73, 41, 14, 0.12);
+  color: #5a3110;
+  line-height: 1.6;
+}
+
+.round-summary.round_finished {
+  background: rgba(255, 239, 214, 0.95);
+  border-color: rgba(150, 91, 24, 0.2);
 }
 
 .canvas-surface canvas {

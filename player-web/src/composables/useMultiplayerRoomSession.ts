@@ -83,6 +83,7 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
   const winner = ref("");
   const currentTurnLabel = ref("pending");
   let socketHandlersAttached = false;
+  let heartbeatTimer: number | null = null;
 
   const inMatch = computed(() => !!matchCode.value && roomPlayers.value.length >= 2);
   const phase = computed<PhaseKey>(() => {
@@ -153,12 +154,14 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
 
     socketClient.onOpen(() => {
       socketConnected.value = true;
+      startHeartbeat();
       pushFeed("WebSocket connected.");
       syncWindowHelpers();
     });
 
     socketClient.onClose(() => {
       socketConnected.value = false;
+      stopHeartbeat();
       pushFeed("WebSocket disconnected.");
       syncWindowHelpers();
     });
@@ -287,6 +290,7 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
       pushFeed("Login first before opening the socket.");
       return;
     }
+    stopHeartbeat();
     socketClient.disconnect();
     socketClient.connect(token.value, currentUser.value.userId);
   }
@@ -339,6 +343,27 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
 
   function sendClientMessage(message: ClientWsMessage) {
     socketClient.send(encodeClientMessage(message));
+  }
+
+  function startHeartbeat() {
+    stopHeartbeat();
+    heartbeatTimer = window.setInterval(() => {
+      sendClientMessage({
+        type: wsMessageTypes.heartbeat,
+        gameCode,
+        roomCode: activeRoomCode.value || undefined,
+        matchCode: matchCode.value || undefined,
+        payload: { ping: true },
+        timestamp: new Date().toISOString()
+      });
+    }, 5000);
+  }
+
+  function stopHeartbeat() {
+    if (heartbeatTimer != null) {
+      window.clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
   }
 
   function handleSocketMessage(event: MessageEvent) {

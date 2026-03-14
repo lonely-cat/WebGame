@@ -56,14 +56,28 @@ async function main() {
     await pageA.waitForTimeout(900);
 
     await pageB.fill("input[placeholder='Type a guess and press submit']", promptText);
-    await pageB.click("text=Submit Guess");
-    await pageB.waitForTimeout(1200);
+    await pageB.press("input[placeholder='Type a guess and press submit']", "Enter");
+    await pageA.waitForFunction(() => {
+      const state = JSON.parse(window.render_game_to_text());
+      return state.roundPhase === "round_finished";
+    }, null, { timeout: 10000 });
+    await pageB.waitForFunction(() => {
+      const state = JSON.parse(window.render_game_to_text());
+      return state.roundPhase === "round_finished";
+    }, null, { timeout: 10000 });
 
     const finishedA = JSON.parse(await pageA.evaluate(() => window.render_game_to_text()));
     const finishedB = JSON.parse(await pageB.evaluate(() => window.render_game_to_text()));
 
     await pageA.click("text=Next Round");
-    await pageA.waitForTimeout(1200);
+    await pageA.waitForFunction(() => {
+      const state = JSON.parse(window.render_game_to_text());
+      return state.roundNo === 2 && state.roundPhase === "drawing";
+    }, null, { timeout: 10000 });
+    await pageB.waitForFunction(() => {
+      const state = JSON.parse(window.render_game_to_text());
+      return state.roundNo === 2 && state.roundPhase === "drawing";
+    }, null, { timeout: 10000 });
 
     const nextRoundA = JSON.parse(await pageA.evaluate(() => window.render_game_to_text()));
     const nextRoundB = JSON.parse(await pageB.evaluate(() => window.render_game_to_text()));

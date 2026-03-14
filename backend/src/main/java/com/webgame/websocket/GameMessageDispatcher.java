@@ -77,6 +77,20 @@ public class GameMessageDispatcher {
         if (message.type() == WsMessageType.PLAYER_ACTION && message.roomCode() != null) {
             try {
                 GameRoomEntity room = roomService.getRoomDetail(message.roomCode());
+                MatchServiceImpl.MatchRefreshResult refreshResult = matchService.refreshRoomState(room);
+                if (refreshResult != null && refreshResult.changed()) {
+                    broadcastGameState(room, refreshResult.matchCode(), refreshResult.playerStones());
+                    if (refreshResult.result() != null) {
+                        sessionManager.broadcastToRoom(room.getId(), serialize(new GameWsMessage(
+                                WsMessageType.MATCH_END,
+                                message.gameCode(),
+                                message.roomCode(),
+                                refreshResult.matchCode(),
+                                serialize(refreshResult.result()),
+                                java.time.Instant.now()
+                        )));
+                    }
+                }
                 Map<String, Object> payload = objectMapper.readValue(message.payload(), new TypeReference<>() {
                 });
                 MatchServiceImpl.MatchActionResult result = matchService.applyRoomAction(room, userId, payload);
@@ -131,6 +145,23 @@ public class GameMessageDispatcher {
 
     public void handleHeartbeat(Long userId, GameWsMessage message) {
         try {
+            if (message.roomCode() != null) {
+                GameRoomEntity room = roomService.getRoomDetail(message.roomCode());
+                MatchServiceImpl.MatchRefreshResult refreshResult = matchService.refreshRoomState(room);
+                if (refreshResult != null && refreshResult.changed()) {
+                    broadcastGameState(room, refreshResult.matchCode(), refreshResult.playerStones());
+                    if (refreshResult.result() != null) {
+                        sessionManager.broadcastToRoom(room.getId(), serialize(new GameWsMessage(
+                                WsMessageType.MATCH_END,
+                                room.gameCode,
+                                room.roomCode,
+                                refreshResult.matchCode(),
+                                serialize(refreshResult.result()),
+                                java.time.Instant.now()
+                        )));
+                    }
+                }
+            }
             sessionManager.sendToUser(userId, serialize(new GameWsMessage(
                     WsMessageType.HEARTBEAT,
                     message.gameCode(),

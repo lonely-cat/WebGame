@@ -29,6 +29,7 @@ const maxRounds = ref(3);
 const scores = ref<Record<string, number>>({});
 const roundPhase = ref("drawing");
 const roundEndsAt = ref<string | null>(null);
+const roundEndReason = ref("");
 const nowTick = ref(Date.now());
 
 if (!(window as any).__draw_guess_tick__) {
@@ -43,7 +44,12 @@ const roomSession = useMultiplayerRoomSession("draw-guess", {
 });
 
 const isDrawer = computed(() => roomSession.currentUser.value?.userId === drawerUserId.value);
-const displayPrompt = computed(() => isDrawer.value ? prompt.value || "..." : promptMask.value || "...");
+const displayPrompt = computed(() => {
+  if (roundPhase.value !== "drawing") {
+    return prompt.value || "...";
+  }
+  return isDrawer.value ? prompt.value || "..." : promptMask.value || "...";
+});
 const secondsRemaining = computed(() => {
   if (!roundEndsAt.value || roundPhase.value !== "drawing") {
     return 0;
@@ -61,6 +67,20 @@ const canAdvanceRound = computed(() =>
   roundPhase.value === "round_finished" &&
   roundNo.value < maxRounds.value
 );
+const roundSummary = computed(() => {
+  if (roundPhase.value === "drawing") {
+    return isDrawer.value
+      ? "Draw clearly so the guesser can find the word before time runs out."
+      : "Watch the sketch, submit guesses, and race the countdown.";
+  }
+  if (roundEndReason.value === "timeout") {
+    return `Time is up. The word was "${prompt.value || displayPrompt.value}".`;
+  }
+  if (roomSession.winner.value) {
+    return `${roomSession.winner.value} solved the prompt "${prompt.value || displayPrompt.value}".`;
+  }
+  return "Round finished.";
+});
 
 function useDrawGuessSession() {
   syncWindowHelpers();
@@ -76,9 +96,11 @@ function useDrawGuessSession() {
     scores,
     roundPhase,
     roundEndsAt,
+    roundEndReason,
     secondsRemaining,
     sortedScores,
     canAdvanceRound,
+    roundSummary,
     isDrawer,
     displayPrompt,
     sendStroke,
@@ -150,6 +172,7 @@ function handleDrawGuessMessage(message: ServerWsEnvelope, helpers: {
       maxRounds.value = Number(payload.state.maxRounds ?? 3);
       roundPhase.value = String(payload.state.phase ?? "drawing");
       roundEndsAt.value = payload.state.roundEndsAt ? String(payload.state.roundEndsAt) : null;
+      roundEndReason.value = String(payload.state.roundEndReason ?? "");
       scores.value = (payload.state.scores as Record<string, number> | undefined) ?? {};
       helpers.currentTurnLabel.value = String(payload.state.currentTurn ?? "live");
       helpers.winner.value = payload.state.winnerUserId ? `User #${payload.state.winnerUserId}` : "";
@@ -225,6 +248,7 @@ function syncWindowHelpers() {
     roundNo: roundNo.value,
     maxRounds: maxRounds.value,
     roundPhase: roundPhase.value,
+    roundEndReason: roundEndReason.value || null,
     secondsRemaining: secondsRemaining.value,
     strokes: strokes.value.length,
     guesses: guesses.value,

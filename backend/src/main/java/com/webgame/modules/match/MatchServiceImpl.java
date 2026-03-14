@@ -92,6 +92,7 @@ public class MatchServiceImpl implements MatchService {
             throw new BusinessException("MATCH_NOT_STARTED", "match has not started yet");
         }
         GameRuleEngine ruleEngine = getRuleEngine(room.gameCode);
+        ruleEngine.reconcileState(session.state());
         String stone = session.playerStones().get(userId);
         if (stone == null) {
             throw new BusinessException("MATCH_PLAYER_INVALID", "player is not part of this match");
@@ -134,7 +135,43 @@ public class MatchServiceImpl implements MatchService {
             return Map.of();
         }
         GameRuleEngine ruleEngine = getRuleEngine(room.gameCode);
+        ruleEngine.reconcileState(session.state());
         return ruleEngine.buildStateView(session.state(), userId).visibleState();
+    }
+
+    public MatchRefreshResult refreshRoomState(GameRoomEntity room) {
+        ActiveMatchSession session = sessionsByRoomId.get(room.getId());
+        if (session == null) {
+            return null;
+        }
+        GameRuleEngine ruleEngine = getRuleEngine(room.gameCode);
+        String beforePhase = String.valueOf(session.state().data().getOrDefault("phase", ""));
+        Object beforeWinner = session.state().data().get("winnerUserId");
+        Object beforeReason = session.state().data().get("roundEndReason");
+        ruleEngine.reconcileState(session.state());
+        String afterPhase = String.valueOf(session.state().data().getOrDefault("phase", ""));
+        Object afterWinner = session.state().data().get("winnerUserId");
+        Object afterReason = session.state().data().get("roundEndReason");
+        boolean changed = !java.util.Objects.equals(beforePhase, afterPhase)
+                || !java.util.Objects.equals(beforeWinner, afterWinner)
+                || !java.util.Objects.equals(beforeReason, afterReason);
+        if (!changed) {
+            return new MatchRefreshResult(session.matchCode(), resolvePlayerRoles(session.state(), session), null, false);
+        }
+
+        GameStateView view = ruleEngine.buildStateView(session.state(), null);
+        snapshots.put(session.matchId(), buildSnapshot(session, view));
+        MatchResult result = null;
+        if (ruleEngine.isGameOver(session.state())) {
+            result = ruleEngine.buildMatchResult(session.state());
+            finishMatch(session.matchId(), result);
+        }
+        return new MatchRefreshResult(
+                session.matchCode(),
+                resolvePlayerRoles(session.state(), session),
+                result == null ? null : result.summary(),
+                true
+        );
     }
 
     private Map<String, Object> buildSnapshot(ActiveMatchSession session, GameStateView view) {
@@ -213,5 +250,9 @@ public class MatchServiceImpl implements MatchService {
     public record MatchActionResult(String matchCode, Map<String, Object> action, Map<String, Object> state,
                                     Map<Long, String> playerStones,
                                     Map<String, Object> result) {
+    }
+
+    public record MatchRefreshResult(String matchCode, Map<Long, String> playerStones, Map<String, Object> result,
+                                     boolean changed) {
     }
 }

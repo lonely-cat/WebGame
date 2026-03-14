@@ -33,9 +33,12 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Added a real Draw and Guess round check that proved a full cycle: drawer receives a prompt, draws, guesser submits the right word, and both clients converge on a finished state with the same winner.
 - Expanded Draw and Guess into a multi-round prototype: rounds now keep cumulative scores, expose a round timer, allow explicit next-round advancement, and rotate drawer/guesser roles between rounds.
 - Verified the Draw and Guess multi-round flow with the browser script: after a correct guess in round 1, both clients synced score totals, advanced into round 2, rotated roles, and showed the next prompt/timer correctly for each viewer.
+- Added server-side timeout reconciliation for Draw and Guess: heartbeat/state reads now close expired drawing rounds automatically, expose `roundEndReason`, and reveal the solved word to both players once the round ends.
+- Added a timeout regression script and re-verified both Draw and Guess result paths: guessed rounds still advance correctly into the next round, and inactive rounds now end as `timeout` without player input.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
 - Continue shrinking the remaining Gomoku-specific session code so only pure board/rule behavior stays in the game folder.
 - Continue polishing Draw and Guess: resolve timed-out rounds on the server, improve guess history UI, and add better round-end messaging.
+- Continue polishing Draw and Guess: add richer guess history UI, clearer round-end celebration/messaging, and support auto-advancing or host-confirmed round transitions.
 - Add a cleaner persistent dev-start workflow for backend and frontend.
