@@ -3,22 +3,21 @@ import { authApi } from "../../api/authApi";
 import { assetApi } from "../../api/assetApi";
 import { roomApi } from "../../api/roomApi";
 import { GameSocketClient } from "../../websocket/GameSocketClient";
+import {
+  isRoomStateMessage,
+  parsePayload,
+  parseServerEnvelope,
+  type ErrorPayload,
+  type MatchEndPayload,
+  type MatchStartPayload,
+  type MoveActionPayload,
+  type RoomPlayerState,
+  type ServerWsEnvelope,
+  type GameStateSyncPayload
+} from "../../websocket/gameProtocol";
 
 type Stone = "black" | "white" | null;
-type RoomPlayer = { userId: number; readyStatus: number; seatNo: number };
-type PlayerActionPayload = {
-  type: "move";
-  row: number;
-  col: number;
-  stone: Exclude<Stone, null>;
-};
-type WsEnvelope = {
-  type: string;
-  gameCode?: string;
-  roomCode?: string;
-  matchCode?: string;
-  payload?: string;
-};
+type RoomPlayer = RoomPlayerState;
 
 const boardSize = 15;
 const canvasSize = 720;
@@ -366,7 +365,7 @@ function handleBoardClick(event: MouseEvent, target: HTMLCanvasElement | null) {
 }
 
 function sendMove(row: number, col: number, stone: Exclude<Stone, null>) {
-  const payload: PlayerActionPayload = { type: "move", row, col, stone };
+  const payload: MoveActionPayload = { type: "move", row, col, stone };
   socketClient.send({
     type: "PLAYER_ACTION",
     gameCode: "gomoku",
@@ -486,16 +485,14 @@ function renderBoardToCanvas(ctx: CanvasRenderingContext2D | null) {
 }
 
 function handleSocketMessage(event: MessageEvent) {
-  let parsed: WsEnvelope | null = null;
-  try {
-    parsed = JSON.parse(event.data) as WsEnvelope;
-  } catch {
+  const parsed = parseServerEnvelope(event.data) as ServerWsEnvelope | null;
+  if (!parsed) {
     pushFeed(String(event.data));
     return;
   }
   if (parsed.type === "PLAYER_ACTION" && parsed.payload) {
-    const payload = JSON.parse(parsed.payload) as PlayerActionPayload;
-    if (payload.type === "move") {
+    const payload = parsePayload<MoveActionPayload>(parsed.payload);
+    if (payload?.type === "move") {
       applyMove(payload.row, payload.col, payload.stone);
     }
     return;
@@ -505,14 +502,11 @@ function handleSocketMessage(event: MessageEvent) {
       matchCode.value = parsed.matchCode;
     }
     if (parsed.payload) {
-      const payload = JSON.parse(parsed.payload) as {
-        playerStones?: Record<string, Exclude<Stone, null>>;
-        matchCode?: string;
-      };
-      if (payload.matchCode) {
+      const payload = parsePayload<MatchStartPayload>(parsed.payload);
+      if (payload?.matchCode) {
         matchCode.value = payload.matchCode;
       }
-      if (currentUser.value && payload.playerStones) {
+      if (currentUser.value && payload?.playerStones) {
         myStone.value = payload.playerStones[String(currentUser.value.userId)] ?? "spectator";
       }
     }
@@ -524,34 +518,28 @@ function handleSocketMessage(event: MessageEvent) {
     if (parsed.matchCode) {
       matchCode.value = parsed.matchCode;
     }
-    const payload = JSON.parse(parsed.payload) as {
-      state: {
-        currentTurn?: Exclude<Stone, null>;
-        winner?: string | null;
-        moves?: Array<{ row: number; col: number; stone: Exclude<Stone, null> }>;
-      };
-      playerStones?: Record<string, Exclude<Stone, null>>;
-    };
-    applyServerState({
-      ...payload.state,
-      playerStones: payload.playerStones
-    });
+    const payload = parsePayload<GameStateSyncPayload<{
+      currentTurn?: Exclude<Stone, null>;
+      winner?: string | null;
+      moves?: Array<{ row: number; col: number; stone: Exclude<Stone, null> }>;
+    }>>(parsed.payload);
+    if (payload) {
+      applyServerState({
+        ...payload.state,
+        playerStones: payload.playerStones
+      });
+    }
     return;
   }
   if (parsed.type === "MATCH_END" && parsed.payload) {
-    const result = JSON.parse(parsed.payload) as { winnerStone?: string | null };
-    winner.value = result.winnerStone ?? winner.value;
+    const result = parsePayload<MatchEndPayload>(parsed.payload);
+    winner.value = result?.winnerStone ?? winner.value;
     pushFeed(`Match finished. Winner: ${winner.value || "n/a"}`);
     syncWindowHelpers();
     return;
   }
-  if ((parsed as any).roomCode && (parsed as any).players) {
-    const roomState = parsed as unknown as {
-      roomCode: string;
-      currentPlayers: number;
-      maxPlayers: number;
-      players: RoomPlayer[];
-    };
+  if (isRoomStateMessage(parsed)) {
+    const roomState = parsed;
     activeRoomCode.value = roomState.roomCode;
     roomPlayers.value = roomState.players ?? [];
     pushFeed(`Room ${roomState.roomCode}: ${roomState.currentPlayers}/${roomState.maxPlayers} players`);
@@ -559,7 +547,8 @@ function handleSocketMessage(event: MessageEvent) {
     return;
   }
   if (parsed.type === "ERROR") {
-    pushFeed(`Error: ${parsed.payload ?? "unknown"}`);
+    const errorPayload = parsePayload<ErrorPayload>(parsed.payload);
+    pushFeed(`Error: ${errorPayload?.message ?? "unknown"}`);
   }
 }
 

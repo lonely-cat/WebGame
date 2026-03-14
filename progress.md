@@ -16,6 +16,8 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Re-ran the frontend build plus the Playwright Gomoku checks after the UI refactor; dual-client move sync and illegal consecutive move rejection still pass.
 - Split Gomoku into a dedicated shell with separate `/room` and `/match` routes, backed by a shared session composable so socket state and match state survive route changes.
 - Verified the new route flow with build output, Playwright screenshots, dual-client sync, and the illegal-move rejection script.
+- Added a shared frontend websocket protocol module for room, match-start, state-sync, action, and error payloads so game sessions can stop hand-rolling message parsing.
+- Refactored the Gomoku session composable to consume those shared protocol types and helpers, then re-verified the room flow and multiplayer sync.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.

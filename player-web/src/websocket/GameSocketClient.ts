@@ -18,7 +18,7 @@ export class GameSocketClient {
   }
 
   send(message: unknown) {
-    this.socket?.send(JSON.stringify(message));
+    this.socket?.send(typeof message === "string" ? message : JSON.stringify(message));
   }
 
   onMessage(handler: (message: MessageEvent) => void) {
