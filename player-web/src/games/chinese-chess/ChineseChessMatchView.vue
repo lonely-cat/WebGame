@@ -13,6 +13,11 @@
           The board is now live: pick one of your pieces, choose a target square, and let the server
           validate the move before both browsers update.
         </p>
+        <div class="status-hero" :class="statusTone">
+          <p class="status-hero-label">{{ winner ? "Endgame" : statusTone === "check" ? "Check Warning" : "Board State" }}</p>
+          <strong>{{ statusLabel }}</strong>
+          <span v-if="friendlyEndReason">{{ friendlyEndReason }}</span>
+        </div>
         <dl class="stats">
           <div><dt>Role</dt><dd>{{ mySide }}</dd></div>
           <div><dt>Turn</dt><dd>{{ currentTurn }}</dd></div>
@@ -107,6 +112,19 @@ const {
   pieceLabel
 } = useChineseChessSession();
 
+const friendlyEndReason = computed(() => {
+  if (endReason.value === "checkmate") {
+    return "No legal reply remains after the check.";
+  }
+  if (endReason.value === "stalemate") {
+    return "The defending side has no legal move left.";
+  }
+  if (endReason.value === "captured_general") {
+    return "The general was captured directly.";
+  }
+  return "";
+});
+
 const boardCells = computed(() =>
   Array.from({ length: boardRows * boardCols }, (_, index) => ({
     row: Math.floor(index / boardCols),
@@ -163,6 +181,43 @@ function describeMove(entry: {
 .copy,
 .selection-copy {
   line-height: 1.6;
+}
+
+.status-hero {
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(107, 71, 24, 0.16);
+  background: rgba(255, 252, 244, 0.92);
+  display: grid;
+  gap: 6px;
+}
+
+.status-hero.check {
+  background: rgba(255, 236, 231, 0.96);
+  border-color: rgba(174, 55, 35, 0.26);
+  color: #8f281a;
+}
+
+.status-hero.winner {
+  background: rgba(235, 247, 225, 0.96);
+  border-color: rgba(92, 128, 44, 0.26);
+  color: #32551d;
+}
+
+.status-hero-label {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.status-hero strong {
+  font-size: 20px;
+}
+
+.status-hero span {
+  line-height: 1.5;
 }
 
 .stats {

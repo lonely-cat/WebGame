@@ -47,6 +47,8 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Added a cannon capture regression that proves screen-capture logic over WebSocket: the opening red cannon can hop the black cannon and capture the black horse on `(0,1)`, and both clients converge on the captured-board state.
 - Surfaced Xiangqi end reasons on the frontend state path so the match UI can distinguish general capture, checkmate, and stalemate once those outcomes occur.
 - Added a real forced-check regression: after a short opening sequence, the red cannon lands on `(4,4)` and both clients report `checkSide = black`, which means the warning hook is now backed by a genuine game state instead of placeholder logic.
+- Added backend Xiangqi rule-engine tests for handcrafted `checkmate` and `stalemate` boards so endgame resolution is now covered by repeatable JUnit assertions instead of browser-only smoke checks.
+- Upgraded the Xiangqi match sidebar with a stronger board-state hero card that highlights check and endgame outcomes more clearly, then re-ran the browser flow and inspected the latest screenshots to confirm the UI stayed intact.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
@@ -59,4 +61,5 @@ TODO:
 - Continue deepening Xiangqi rules: add explicit checkmate/stalemate resolution, drive the new check warning with real forced-check scenarios, and grow automated coverage toward captures and cannon screens.
 - Continue deepening Xiangqi rules: surface real checkmate/stalemate outcomes in the UI, add forced-check scenarios that light up the warning banner, and keep expanding capture/regression coverage.
 - Continue deepening Xiangqi rules: render real end reasons/check banners more prominently in the UI, add forced mate/stalemate regression scenarios, and keep expanding capture/regression coverage.
+- Continue deepening Xiangqi rules: add browser-level forced mate/stalemate scenarios on top of the new unit tests so the full room-to-match websocket flow is covered for real endgames.
 - Add a cleaner persistent dev-start workflow for backend and frontend.
