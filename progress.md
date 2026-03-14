@@ -54,6 +54,8 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Fixed a subtle frontend bug where generic room-session `MATCH_END` handling overwrote the Xiangqi-specific `render_game_to_text`, hiding `endReason` from browser automation right after a game ended.
 - Enriched the Xiangqi dev scenarios with readable move-feed notes plus a `scenarioName` field, so browser automation and humans can tell which endgame layout is active without inferring it from the board alone.
 - Re-ran both Xiangqi browser endgame scripts sequentially against the refreshed backend and verified that `scenarioName`, `latestMove.note`, and the end-state UI all stay in sync on both clients.
+- Added a non-terminal Xiangqi dev scenario (`capture_general_ready_red`) plus a browser script that performs the final legal rook capture, so `captured_general` is now covered through an actual click-to-move finish instead of only terminal-state injection.
+- Verified the captured-general finish over the real room/socket flow and inspected the resulting screenshot, including the updated endgame card and explanatory move feed.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
@@ -69,4 +71,5 @@ TODO:
 - Continue deepening Xiangqi rules: add browser-level forced mate/stalemate scenarios on top of the new unit tests so the full room-to-match websocket flow is covered for real endgames.
 - Continue deepening Xiangqi rules: replace the current dev-only scenario injection with naturally reachable endgame paths where practical, and add richer move history for injected scenarios so the feed can explain how the end state was reached.
 - Continue deepening Xiangqi rules: replace the current dev-only scenario injection with naturally reachable endgame paths where practical, now that the injected scenarios already expose explanatory feed notes and stable scenario ids for regression reuse.
+- Continue deepening Xiangqi rules: keep reducing reliance on injected terminal boards by introducing more “one or two legal moves away” live scenarios, then eventually replace those with fully natural openings where feasible.
 - Add a cleaner persistent dev-start workflow for backend and frontend.
