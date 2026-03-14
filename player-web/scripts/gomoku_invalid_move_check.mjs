@@ -32,26 +32,31 @@ async function main() {
     await pageB.click("#join-room-btn");
     await pageB.waitForTimeout(500);
     await pageB.click("#ready-btn");
-    await pageB.waitForTimeout(700);
+    await pageB.waitForTimeout(900);
     await pageA.click("#start-btn");
     await pageA.waitForTimeout(900);
 
-    const canvasA = pageA.locator("canvas");
-    const box = await canvasA.boundingBox();
-    if (!box) {
+    const boxA = await pageA.locator("canvas").boundingBox();
+    if (!boxA) {
       throw new Error("Canvas not found on page A.");
     }
 
-    await pageA.mouse.click(box.x + 514, box.y + 257);
+    await pageA.mouse.click(boxA.x + 514, boxA.y + 257);
     await pageA.waitForTimeout(900);
+    const afterFirst = JSON.parse(await pageA.evaluate(() => window.render_game_to_text()));
 
-    const stateA = JSON.parse(await pageA.evaluate(() => window.render_game_to_text()));
-    const stateB = JSON.parse(await pageB.evaluate(() => window.render_game_to_text()));
+    await pageA.mouse.click(boxA.x + 411, boxA.y + 360);
+    await pageA.waitForTimeout(900);
+    const afterSecond = JSON.parse(await pageA.evaluate(() => window.render_game_to_text()));
 
     console.log(JSON.stringify({
       roomCode,
-      pageA: stateA,
-      pageB: stateB
+      firstMoveCount: afterFirst.moves.length,
+      secondMoveCount: afterSecond.moves.length,
+      currentTurn: afterSecond.turn,
+      myStone: await pageA.textContent("#my-stone"),
+      matchCode: await pageA.textContent("#active-match-code"),
+      feedText: await pageA.locator(".feed").textContent()
     }, null, 2));
   } finally {
     await browser.close();

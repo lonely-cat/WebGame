@@ -82,7 +82,7 @@ public class MatchServiceImpl implements MatchService {
         sessionsByRoomId.put(room.getId(), session);
         startMatch(matchId);
         snapshots.put(matchId, buildSnapshot(session, ruleEngine.buildStateView(state, null)));
-        return new MatchStartResult(matchId, matchCode, ruleEngine.buildStateView(state, null).visibleState());
+        return new MatchStartResult(matchId, matchCode, ruleEngine.buildStateView(state, null).visibleState(), session.playerStones());
     }
 
     public MatchActionResult applyRoomAction(GameRoomEntity room, Long userId, Map<String, Object> payload) {
@@ -123,6 +123,7 @@ public class MatchServiceImpl implements MatchService {
                         "stone", stone
                 ),
                 view.visibleState(),
+                session.playerStones(),
                 result == null ? null : result.summary()
         );
     }
@@ -157,10 +158,12 @@ public class MatchServiceImpl implements MatchService {
                                       GameState state, Map<Long, String> playerStones) {
     }
 
-    public record MatchStartResult(Long matchId, String matchCode, Map<String, Object> state) {
+    public record MatchStartResult(Long matchId, String matchCode, Map<String, Object> state,
+                                   Map<Long, String> playerStones) {
     }
 
     public record MatchActionResult(String matchCode, Map<String, Object> action, Map<String, Object> state,
+                                    Map<Long, String> playerStones,
                                     Map<String, Object> result) {
     }
 }

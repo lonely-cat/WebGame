@@ -91,7 +91,10 @@ public class GameMessageDispatcher {
                         message.gameCode(),
                         message.roomCode(),
                         result.matchCode(),
-                        serialize(result.state()),
+                        serialize(Map.of(
+                                "state", result.state(),
+                                "playerStones", result.playerStones()
+                        )),
                         java.time.Instant.now()
                 )));
                 if (result.result() != null) {
@@ -119,7 +122,12 @@ public class GameMessageDispatcher {
                         room.gameCode,
                         room.roomCode,
                         result.matchCode(),
-                        serialize(Map.of("status", "started", "matchId", result.matchId())),
+                        serialize(Map.of(
+                                "status", "started",
+                                "matchId", result.matchId(),
+                                "matchCode", result.matchCode(),
+                                "playerStones", result.playerStones()
+                        )),
                         java.time.Instant.now()
                 )));
                 sessionManager.broadcastToRoom(room.getId(), serialize(new GameWsMessage(
@@ -127,7 +135,10 @@ public class GameMessageDispatcher {
                         room.gameCode,
                         room.roomCode,
                         result.matchCode(),
-                        serialize(result.state()),
+                        serialize(Map.of(
+                                "state", result.state(),
+                                "playerStones", result.playerStones()
+                        )),
                         java.time.Instant.now()
                 )));
             } catch (Exception exception) {

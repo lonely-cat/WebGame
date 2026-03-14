@@ -55,6 +55,8 @@
             <div><dt>Room</dt><dd id="active-room-code">{{ activeRoomCode || "-" }}</dd></div>
             <div><dt>Status</dt><dd>{{ socketConnected ? "socket ready" : "offline" }}</dd></div>
             <div><dt>Turn</dt><dd>{{ currentTurnLabel }}</dd></div>
+            <div><dt>Stone</dt><dd id="my-stone">{{ myStoneLabel }}</dd></div>
+            <div><dt>Match</dt><dd id="active-match-code">{{ matchCode || "-" }}</dd></div>
           </dl>
         </div>
 
@@ -143,10 +145,12 @@ const winner = ref("");
 const roomPlayers = ref<Array<{ userId: number; readyStatus: number; seatNo: number }>>([]);
 const animationCounter = ref(0);
 const matchCode = ref("");
+const myStone = ref<Exclude<Stone, null> | "spectator">("spectator");
 
 const blackPlayerName = computed(() => roomPlayers.value[0]?.userId ? `User #${roomPlayers.value[0].userId}` : "Seat 1");
 const whitePlayerName = computed(() => roomPlayers.value[1]?.userId ? `User #${roomPlayers.value[1].userId}` : "Seat 2");
 const currentTurnLabel = computed(() => winner.value ? "finished" : currentTurn.value);
+const myStoneLabel = computed(() => myStone.value);
 const canJoinRoom = computed(() => !!roomCodeInput.value && !!token.value && socketConnected.value);
 
 function createEmptyBoard(): Stone[][] {
@@ -220,7 +224,7 @@ async function quickStart() {
   await pause(220);
   sendReady();
   await pause(220);
-  startMatch();
+  pushFeed("Quick start finished. Invite one more player, then press Start.");
 }
 
 async function loadAsset() {
@@ -300,7 +304,11 @@ function startMatch() {
 }
 
 function handleCanvasClick(event: MouseEvent) {
-  if (!activeRoomCode.value || !socketConnected.value || winner.value) {
+  if (!activeRoomCode.value || !socketConnected.value || winner.value || myStone.value === "spectator") {
+    return;
+  }
+  if (myStone.value !== currentTurn.value) {
+    pushFeed(`It is ${currentTurn.value}'s turn.`);
     return;
   }
   const target = canvasRef.value;
@@ -344,6 +352,7 @@ function applyMove(row: number, col: number, stone: Exclude<Stone, null>) {
 }
 
 function applyServerState(serverState: {
+  playerStones?: Record<string, Exclude<Stone, null>>;
   currentTurn?: Exclude<Stone, null>;
   winner?: string | null;
   moves?: Array<{ row: number; col: number; stone: Exclude<Stone, null> }>;
@@ -355,6 +364,9 @@ function applyServerState(serverState: {
       board.value[move.row][move.col] = move.stone;
       moveHistory.value.push(move);
     }
+  }
+  if (currentUser.value && serverState.playerStones) {
+    myStone.value = serverState.playerStones[String(currentUser.value.userId)] ?? "spectator";
   }
   currentTurn.value = serverState.currentTurn ?? currentTurn.value;
   winner.value = serverState.winner ?? "";
@@ -468,6 +480,18 @@ function handleSocketMessage(event: MessageEvent) {
     if (parsed.matchCode) {
       matchCode.value = parsed.matchCode;
     }
+    if (parsed.payload) {
+      const payload = JSON.parse(parsed.payload) as {
+        playerStones?: Record<string, Exclude<Stone, null>>;
+        matchCode?: string;
+      };
+      if (payload.matchCode) {
+        matchCode.value = payload.matchCode;
+      }
+      if (currentUser.value && payload.playerStones) {
+        myStone.value = payload.playerStones[String(currentUser.value.userId)] ?? "spectator";
+      }
+    }
     resetBoard();
     pushFeed("Match started.");
     return;
@@ -477,7 +501,18 @@ function handleSocketMessage(event: MessageEvent) {
     if (parsed.matchCode) {
       matchCode.value = parsed.matchCode;
     }
-    applyServerState(JSON.parse(parsed.payload));
+    const payload = JSON.parse(parsed.payload) as {
+      state: {
+        currentTurn?: Exclude<Stone, null>;
+        winner?: string | null;
+        moves?: Array<{ row: number; col: number; stone: Exclude<Stone, null> }>;
+      };
+      playerStones?: Record<string, Exclude<Stone, null>>;
+    };
+    applyServerState({
+      ...payload.state,
+      playerStones: payload.playerStones
+    });
     return;
   }
 
@@ -521,6 +556,7 @@ function syncWindowHelpers() {
     note: "origin is top-left, rows grow downward, cols grow rightward",
     roomCode: activeRoomCode.value || null,
     matchCode: matchCode.value || null,
+    myStone: myStone.value,
     socketConnected: socketConnected.value,
     roomPlayers: roomPlayers.value,
     turn: currentTurn.value,
