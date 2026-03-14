@@ -25,6 +25,19 @@
           <div><dt>Winner</dt><dd>{{ winner || "-" }}</dd></div>
           <div><dt>End</dt><dd>{{ endReason || "-" }}</dd></div>
         </dl>
+        <div v-if="isDev" class="scenario-lab">
+          <p class="scenario-label">Scenario Lab</p>
+          <div class="scenario-buttons">
+            <button
+              v-for="scenario in scenarioOptions"
+              :key="scenario.value"
+              class="scenario-btn"
+              @click="loadScenario(scenario.value)"
+            >
+              {{ scenario.label }}
+            </button>
+          </div>
+        </div>
       </article>
 
       <article class="panel">
@@ -107,6 +120,9 @@ const {
   statusLabel,
   statusTone,
   selectionLabel,
+  isDev,
+  loadScenario,
+  scenarioOptions,
   clickCell,
   cellClasses,
   pieceLabel
@@ -218,6 +234,32 @@ function describeMove(entry: {
 
 .status-hero span {
   line-height: 1.5;
+}
+
+.scenario-lab {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(103, 66, 24, 0.14);
+}
+
+.scenario-label {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.scenario-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.scenario-btn {
+  padding: 10px 14px;
+  background: rgba(255, 250, 240, 0.95);
+  color: #4a2509;
+  cursor: pointer;
 }
 
 .stats {

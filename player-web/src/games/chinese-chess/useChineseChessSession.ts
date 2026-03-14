@@ -44,6 +44,7 @@ const roomSession = useMultiplayerRoomSession("chinese-chess", {
   testUserPrefix: "xiangqi",
   customMessageHandler: handleChineseChessMessage
 });
+const isDev = import.meta.env.DEV;
 
 const mySide = computed(() => roomSession.roleLabel.value === "red" || roomSession.roleLabel.value === "black"
   ? roomSession.roleLabel.value as Side
@@ -119,10 +120,18 @@ function useChineseChessSession() {
     clickCell,
     cellClasses,
     pieceLabel,
+    loadScenario,
+    scenarioOptions,
+    isDev,
     resetBoard,
     ...roomSession
   };
 }
+
+const scenarioOptions = [
+  { value: "checkmate_red", label: "Red Checkmates Black" },
+  { value: "stalemate_red", label: "Red Stalemates Black" }
+] as const;
 
 function createEmptyBoard(): Piece[][] {
   return Array.from({ length: boardRows }, () => Array.from({ length: boardCols }, () => null));
@@ -210,6 +219,20 @@ function sendMove(fromRow: number, fromCol: number, toRow: number, toCol: number
   roomSession.sendClientMessage(message);
 }
 
+function loadScenario(scenario: string) {
+  const message: ClientWsMessage<{
+    type: "load_scenario";
+    scenario: string;
+  }> = {
+    type: wsMessageTypes.playerAction,
+    gameCode: "chinese-chess",
+    roomCode: roomSession.activeRoomCode.value,
+    payload: { type: "load_scenario", scenario },
+    timestamp: new Date().toISOString()
+  };
+  roomSession.sendClientMessage(message);
+}
+
 function pieceLabel(piece: Piece) {
   if (!piece) {
     return "";
@@ -289,18 +312,23 @@ function handleChineseChessMessage(parsed: ServerWsEnvelope, helpers: {
     return true;
   }
   if (parsed.type === wsMessageTypes.matchEnd && parsed.payload) {
-    const payload = parsePayload<MatchEndPayload>(parsed.payload);
+    const payload = parsePayload<MatchEndPayload & { endReason?: string | null }>(parsed.payload);
     if (payload?.winnerStone) {
       winner.value = payload.winnerStone;
       helpers.winner.value = payload.winnerStone;
-      syncWindowHelpers();
     }
-    return false;
+    if (payload?.endReason !== undefined) {
+      endReason.value = payload.endReason ?? null;
+    }
+    helpers.currentTurnLabel.value = "finished";
+    syncWindowHelpers();
+    return true;
   }
   return false;
 }
 
 function syncWindowHelpers() {
+  (window as any).load_chinese_chess_scenario = (scenario: string) => loadScenario(scenario);
   (window as any).render_game_to_text = () => JSON.stringify({
     mode: winner.value ? "finished" : roomSession.inMatch.value ? "playing" : "room",
     phase: roomSession.phase.value,

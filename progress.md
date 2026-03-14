@@ -49,6 +49,9 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Added a real forced-check regression: after a short opening sequence, the red cannon lands on `(4,4)` and both clients report `checkSide = black`, which means the warning hook is now backed by a genuine game state instead of placeholder logic.
 - Added backend Xiangqi rule-engine tests for handcrafted `checkmate` and `stalemate` boards so endgame resolution is now covered by repeatable JUnit assertions instead of browser-only smoke checks.
 - Upgraded the Xiangqi match sidebar with a stronger board-state hero card that highlights check and endgame outcomes more clearly, then re-ran the browser flow and inspected the latest screenshots to confirm the UI stayed intact.
+- Added a dev-only Xiangqi scenario lab plus websocket scenario loader so browser tests can jump straight into `checkmate` and `stalemate` states without hand-playing long move sequences.
+- Added browser-level Xiangqi regression scripts for `checkmate` and `stalemate`, then verified both end states sequentially over the real room/socket/match flow with shared test accounts.
+- Fixed a subtle frontend bug where generic room-session `MATCH_END` handling overwrote the Xiangqi-specific `render_game_to_text`, hiding `endReason` from browser automation right after a game ended.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.
@@ -62,4 +65,5 @@ TODO:
 - Continue deepening Xiangqi rules: surface real checkmate/stalemate outcomes in the UI, add forced-check scenarios that light up the warning banner, and keep expanding capture/regression coverage.
 - Continue deepening Xiangqi rules: render real end reasons/check banners more prominently in the UI, add forced mate/stalemate regression scenarios, and keep expanding capture/regression coverage.
 - Continue deepening Xiangqi rules: add browser-level forced mate/stalemate scenarios on top of the new unit tests so the full room-to-match websocket flow is covered for real endgames.
+- Continue deepening Xiangqi rules: replace the current dev-only scenario injection with naturally reachable endgame paths where practical, and add richer move history for injected scenarios so the feed can explain how the end state was reached.
 - Add a cleaner persistent dev-start workflow for backend and frontend.

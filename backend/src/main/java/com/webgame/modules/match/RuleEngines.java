@@ -211,6 +211,13 @@ public final class RuleEngines {
 
         @Override
         public ActionValidateResult validateAction(PlayerActionCommand action, GameState state) {
+            if ("load_scenario".equals(action.actionType())) {
+                String scenario = String.valueOf(action.payload().getOrDefault("scenario", ""));
+                if (!isSupportedScenario(scenario)) {
+                    return new ActionValidateResult(false, "unsupported scenario");
+                }
+                return new ActionValidateResult(true, "accepted");
+            }
             if (!"move".equals(action.actionType())) {
                 return new ActionValidateResult(false, "unsupported action type");
             }
@@ -257,6 +264,9 @@ public final class RuleEngines {
 
         @Override
         public GameState applyAction(PlayerActionCommand action, GameState state) {
+            if ("load_scenario".equals(action.actionType())) {
+                return loadScenario(String.valueOf(action.payload().getOrDefault("scenario", "")), state);
+            }
             Integer fromRow = readInt(action.payload().get("fromRow"));
             Integer fromCol = readInt(action.payload().get("fromCol"));
             Integer toRow = readInt(action.payload().get("toRow"));
@@ -330,6 +340,42 @@ public final class RuleEngines {
             placeCannons(board, 7, "red");
             placePawns(board, 6, "red");
             return board;
+        }
+
+        private static boolean isSupportedScenario(String scenario) {
+            return "checkmate_red".equals(scenario) || "stalemate_red".equals(scenario);
+        }
+
+        private static GameState loadScenario(String scenario, GameState state) {
+            String[][] board = emptyBoard();
+            if ("checkmate_red".equals(scenario)) {
+                board[0][4] = "black-general";
+                board[1][3] = "red-rook";
+                board[1][4] = "red-rook";
+                board[1][5] = "red-rook";
+                board[9][4] = "red-general";
+                state.data().put("winner", "red");
+                state.data().put("checkSide", "black");
+                state.data().put("endReason", "checkmate");
+                state.data().put("currentTurn", "black");
+            } else if ("stalemate_red".equals(scenario)) {
+                board[0][4] = "black-general";
+                board[1][3] = "red-rook";
+                board[1][4] = "red-advisor";
+                board[1][5] = "red-rook";
+                board[9][4] = "red-general";
+                state.data().put("winner", "red");
+                state.data().put("checkSide", null);
+                state.data().put("endReason", "stalemate");
+                state.data().put("currentTurn", "black");
+            }
+            state.data().put("board", board);
+            state.data().put("moves", new ArrayList<Map<String, Object>>());
+            return state;
+        }
+
+        private static String[][] emptyBoard() {
+            return new String[ROWS][COLS];
         }
 
         private static void placeBackRank(String[][] board, int row, String side) {
