@@ -48,6 +48,7 @@
         <div class="row">
           <button @click="createRoom" :disabled="!token || loading.roomCreate">Create Room</button>
           <button class="ghost" @click="connectSocket" :disabled="!token || socketConnected">Connect WS</button>
+          <button class="ghost" @click="goToLobby">Back To Lobby</button>
         </div>
 
         <label>
@@ -150,6 +151,10 @@ watch(inMatch, (value) => {
     router.push("/games/draw-guess/match");
   }
 }, { immediate: true });
+
+function goToLobby() {
+  router.push("/lobby");
+}
 </script>
 
 <style scoped>

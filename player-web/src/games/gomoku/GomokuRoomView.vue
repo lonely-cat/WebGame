@@ -48,6 +48,7 @@
         <div class="row">
           <button @click="createRoom" :disabled="!token || loading.roomCreate">Create Room</button>
           <button class="ghost" @click="connectSocket" :disabled="!token || socketConnected">Connect WS</button>
+          <button class="ghost" @click="goToLobby">Back To Lobby</button>
         </div>
 
         <label>
@@ -151,6 +152,10 @@ const {
 
 function goToMatch() {
   router.push("/games/gomoku/match");
+}
+
+function goToLobby() {
+  router.push("/lobby");
 }
 
 watch(inMatch, (value) => {

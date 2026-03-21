@@ -7,7 +7,10 @@
             <p class="kicker">Live Match</p>
             <h2>{{ boardHeading }}</h2>
           </div>
-          <button class="ghost" @click="goToRoom">Back To Room</button>
+          <div class="top-actions">
+            <button class="ghost" @click="goToRoom">Back To Room</button>
+            <button class="ghost" @click="goToLobby">Back To Lobby</button>
+          </div>
         </div>
         <p class="copy">{{ boardCopy }}</p>
         <dl class="stats">
@@ -99,6 +102,10 @@ function goToRoom() {
   router.push("/games/gomoku/room");
 }
 
+function goToLobby() {
+  router.push("/lobby");
+}
+
 onMounted(() => {
   if (!canvasRef.value) return;
   ctxRef.value = canvasRef.value.getContext("2d");
@@ -130,6 +137,12 @@ watch([moveHistory, board, inMatch, winner], () => {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 14px;
+}
+
+.top-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .panel-heading.tight {

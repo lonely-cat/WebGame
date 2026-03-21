@@ -7,7 +7,10 @@
             <p class="kicker">Live Match</p>
             <h2>Draw and Guess round</h2>
           </div>
-          <button class="ghost" @click="goToRoom">Back To Room</button>
+          <div class="top-actions">
+            <button class="ghost" @click="goToRoom">Back To Room</button>
+            <button class="ghost" @click="goToLobby">Back To Lobby</button>
+          </div>
         </div>
         <p class="copy">
           The first playable round is here: the drawer sees the prompt, everyone else sees the mask,
@@ -157,6 +160,10 @@ function goToRoom() {
   router.push("/games/draw-guess/room");
 }
 
+function goToLobby() {
+  router.push("/lobby");
+}
+
 function drawScene() {
   const ctx = ctxRef.value;
   const canvas = canvasRef.value;
@@ -262,6 +269,12 @@ watch(roundNo, () => {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 14px;
+}
+
+.top-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .panel-heading.tight {
