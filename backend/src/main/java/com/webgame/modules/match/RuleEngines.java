@@ -346,6 +346,7 @@ public final class RuleEngines {
             return "checkmate_red".equals(scenario)
                     || "checkmate_ready_red".equals(scenario)
                     || "stalemate_red".equals(scenario)
+                    || "stalemate_ready_red".equals(scenario)
                     || "capture_general_ready_red".equals(scenario);
         }
 
@@ -392,6 +393,20 @@ public final class RuleEngines {
                 state.data().put("moves", new ArrayList<>(List.of(
                         Map.of("piece", "scenario", "note", "Loaded scenario: red stalemates black"),
                         Map.of("piece", "red-advisor", "toRow", 1, "toCol", 4, "note", "Advisor blocks the only legal escape")
+                )));
+            } else if ("stalemate_ready_red".equals(scenario)) {
+                board[0][4] = "black-general";
+                board[2][3] = "red-rook";
+                board[2][4] = "red-cannon";
+                board[2][5] = "red-rook";
+                board[9][4] = "red-general";
+                state.data().put("winner", null);
+                state.data().put("checkSide", null);
+                state.data().put("endReason", null);
+                state.data().put("currentTurn", "red");
+                state.data().put("moves", new ArrayList<>(List.of(
+                        Map.of("piece", "scenario", "note", "Loaded scenario: red can finish with stalemate"),
+                        Map.of("piece", "red-cannon", "toRow", 2, "toCol", 4, "note", "Cannon is ready to slide into the blocked escape square")
                 )));
             } else if ("capture_general_ready_red".equals(scenario)) {
                 board[0][4] = "black-general";

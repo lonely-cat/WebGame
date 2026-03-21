@@ -119,6 +119,7 @@ const {
   scenarioName,
   mySide,
   roomPlayers,
+  openRoomView,
   statusLabel,
   statusTone,
   selectionLabel,
@@ -151,6 +152,7 @@ const boardCells = computed(() =>
 );
 
 function goToRoom() {
+  openRoomView();
   router.push("/games/chinese-chess/room");
 }
 

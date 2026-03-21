@@ -59,6 +59,14 @@
           <button id="join-room-btn" @click="joinRoomViaSocket" :disabled="!canJoinRoom">Join Room</button>
           <button id="ready-btn" class="ghost" @click="sendReady" :disabled="!activeRoomCode || !socketConnected">Ready</button>
           <button id="start-btn" class="ghost" @click="startMatch" :disabled="!canStartMatch">Start</button>
+          <button
+            v-if="inMatch"
+            id="resume-match-btn"
+            class="ghost"
+            @click="goToMatch"
+          >
+            Resume Match
+          </button>
         </div>
 
         <div class="roster">
@@ -131,6 +139,7 @@ const {
   activeRoomCode,
   roomFeed,
   inMatch,
+  preferRoomView,
   canJoinRoom,
   canStartMatch,
   login,
@@ -141,16 +150,22 @@ const {
   joinRoomViaSocket,
   sendReady,
   startMatch,
+  resumeMatchView,
   playerNameBySeat,
   seatStatus,
   seatTone
 } = useChineseChessSession();
 
 watch(inMatch, (value) => {
-  if (value) {
+  if (value && !preferRoomView.value) {
     router.push("/games/chinese-chess/match");
   }
 }, { immediate: true });
+
+function goToMatch() {
+  resumeMatchView();
+  router.push("/games/chinese-chess/match");
+}
 </script>
 
 <style scoped>

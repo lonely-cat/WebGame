@@ -82,6 +82,7 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
   const roleLabel = ref("spectator");
   const winner = ref("");
   const currentTurnLabel = ref("pending");
+  const preferRoomView = ref(false);
   let socketHandlersAttached = false;
   let heartbeatTimer: number | null = null;
 
@@ -123,6 +124,7 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
     roleLabel,
     winner,
     currentTurnLabel,
+    preferRoomView,
     inMatch,
     phase,
     phaseTitle,
@@ -140,6 +142,8 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
     sendReady,
     startMatch,
     sendClientMessage,
+    openRoomView,
+    resumeMatchView,
     playerNameBySeat,
     seatStatus,
     seatTone,
@@ -273,6 +277,7 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
         roomCodeInput.value = result.data.roomCode;
         activeRoomCode.value = result.data.roomCode;
         matchCode.value = "";
+        preferRoomView.value = false;
         roleLabel.value = "spectator";
         roomPlayers.value = [];
         pushFeed(`Created room ${result.data.roomCode}`);
@@ -332,6 +337,7 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
   }
 
   function startMatch() {
+    preferRoomView.value = false;
     sendClientMessage({
       type: wsMessageTypes.matchStart,
       gameCode,
@@ -343,6 +349,16 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
 
   function sendClientMessage(message: ClientWsMessage) {
     socketClient.send(encodeClientMessage(message));
+  }
+
+  function openRoomView() {
+    preferRoomView.value = true;
+    syncWindowHelpers();
+  }
+
+  function resumeMatchView() {
+    preferRoomView.value = false;
+    syncWindowHelpers();
   }
 
   function startHeartbeat() {
@@ -387,6 +403,7 @@ function createMultiplayerRoomSession(gameCode: string, options?: {
       return;
     }
     if (parsed.type === wsMessageTypes.matchStart) {
+      preferRoomView.value = false;
       if (parsed.matchCode) {
         matchCode.value = parsed.matchCode;
       }
