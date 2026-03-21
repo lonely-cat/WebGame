@@ -7,7 +7,10 @@
             <p class="kicker">Live Match</p>
             <h2>Xiangqi board</h2>
           </div>
-          <button class="ghost" @click="goToRoom">Back To Room</button>
+          <div class="top-actions">
+            <button class="ghost" @click="goToRoom">Back To Room</button>
+            <button class="ghost" @click="goToLobby">Back To Lobby</button>
+          </div>
         </div>
         <p class="copy">
           The board is now live: pick one of your pieces, choose a target square, and let the server
@@ -156,6 +159,11 @@ function goToRoom() {
   router.push("/games/chinese-chess/room");
 }
 
+function goToLobby() {
+  openRoomView();
+  router.push("/lobby");
+}
+
 function describeMove(entry: {
   fromRow?: number;
   fromCol?: number;
@@ -189,6 +197,12 @@ function describeMove(entry: {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 14px;
+}
+
+.top-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .panel-heading.tight {

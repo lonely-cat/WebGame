@@ -59,6 +59,7 @@ Original prompt: 这个项目我想创建一个一些小游戏的一个集合网
 - Added another near-finish Xiangqi scenario (`checkmate_ready_red`) plus a browser script that plays the last legal rook move into `checkmate`, so mate resolution is no longer covered only by direct terminal injection.
 - Verified the live checkmate finish over the real room/socket flow and checked the resulting screenshot, including the scenario label and explanatory move feed entry for the final rook move.
 - Fixed the Xiangqi `Back To Room` interaction: the room page now respects an explicit user choice to leave the board instead of auto-bouncing straight back into `/match`, and exposes a `Resume Match` button to return intentionally.
+- Added explicit `Back To Lobby` actions on both the Xiangqi room page and match page, then verified that both routes can return to `/lobby` directly in the browser.
 
 TODO:
 - Promote the current room websocket payloads into a stable protocol shared by frontend and backend.

@@ -48,6 +48,7 @@
         <div class="row">
           <button @click="createRoom" :disabled="!token || loading.roomCreate">Create Room</button>
           <button class="ghost" @click="connectSocket" :disabled="!token || socketConnected">Connect WS</button>
+          <button class="ghost" @click="goToLobby">Back To Lobby</button>
         </div>
 
         <label>
@@ -165,6 +166,10 @@ watch(inMatch, (value) => {
 function goToMatch() {
   resumeMatchView();
   router.push("/games/chinese-chess/match");
+}
+
+function goToLobby() {
+  router.push("/lobby");
 }
 </script>
 
