@@ -344,6 +344,7 @@ public final class RuleEngines {
 
         private static boolean isSupportedScenario(String scenario) {
             return "checkmate_red".equals(scenario)
+                    || "checkmate_ready_red".equals(scenario)
                     || "stalemate_red".equals(scenario)
                     || "capture_general_ready_red".equals(scenario);
         }
@@ -363,6 +364,20 @@ public final class RuleEngines {
                 state.data().put("moves", new ArrayList<>(List.of(
                         Map.of("piece", "scenario", "note", "Loaded scenario: red checkmates black"),
                         Map.of("piece", "red-rook", "toRow", 1, "toCol", 4, "note", "Central rook seals the palace file")
+                )));
+            } else if ("checkmate_ready_red".equals(scenario)) {
+                board[0][4] = "black-general";
+                board[1][3] = "red-rook";
+                board[1][5] = "red-rook";
+                board[2][4] = "red-rook";
+                board[9][4] = "red-general";
+                state.data().put("winner", null);
+                state.data().put("checkSide", null);
+                state.data().put("endReason", null);
+                state.data().put("currentTurn", "red");
+                state.data().put("moves", new ArrayList<>(List.of(
+                        Map.of("piece", "scenario", "note", "Loaded scenario: red can finish with checkmate"),
+                        Map.of("piece", "red-rook", "toRow", 2, "toCol", 4, "note", "Central rook is ready to close the file")
                 )));
             } else if ("stalemate_red".equals(scenario)) {
                 board[0][4] = "black-general";

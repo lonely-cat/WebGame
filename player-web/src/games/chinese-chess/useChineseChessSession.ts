@@ -133,6 +133,7 @@ function useChineseChessSession() {
 
 const scenarioOptions = [
   { value: "checkmate_red", label: "Red Checkmates Black" },
+  { value: "checkmate_ready_red", label: "Red Finishes Checkmate" },
   { value: "stalemate_red", label: "Red Stalemates Black" },
   { value: "capture_general_ready_red", label: "Red Captures General" }
 ] as const;
